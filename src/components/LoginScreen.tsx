@@ -14,8 +14,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pinCode, setPinCode] = useState('');
 
   const handleRoleChange = (newRole: 'owner' | 'barber') => {
     setRole(newRole);
@@ -50,17 +48,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handlePinSubmit = () => {
-    setShowPinModal(false);
-    try {
-      localStorage.setItem('barberos_user_role', 'barber');
-    } catch {
-      // Ignore
-    }
-    if (onRoleSelect) onRoleSelect('barber');
-    onNavigate('barber_terminal', 'slide_up');
   };
 
   return (
@@ -310,47 +297,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
                   )}
                 </button>
               </form>
-
-              {/* Barber Tablet Quick Switcher Mode (PIN / Touch ID) */}
-              <div className="flex flex-col gap-2 pt-1">
-                <div className="relative flex items-center justify-center w-full my-1">
-                  <div className="w-full h-[1px] bg-slate-200" />
-                  <span className="absolute bg-white px-3 font-label-caps text-[11px] text-slate-500 uppercase tracking-wider font-semibold">
-                    o cambio veloz en terminal de sillas
-                  </span>
-                </div>
-
-                {/* Quick 4-Digit PIN Access Button */}
-                <button
-                  type="button"
-                  onClick={() => onNavigate('barber_terminal', 'slide_up')}
-                  className="w-full h-12 rounded-lg bg-slate-50 hover:bg-slate-100 active:bg-slate-200 border border-slate-200 text-slate-800 font-label-lg text-sm flex items-center justify-center gap-3 transition-colors shadow-xs cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-amber-600 text-xl font-bold">dialpad</span>
-                  <span className="font-semibold">Ingresar con PIN de 4 dígitos</span>
-                  <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 font-label-caps text-[11px] font-bold">
-                    Rápido
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            {/* Active Station Ambient Snippet */}
-            <div className="w-full p-4 rounded-xl bg-emerald-50/80 border border-emerald-200/80 flex items-center gap-3 shadow-xs">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
-                <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  timer
-                </span>
-              </div>
-              <div className="flex flex-col flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  <span className="font-label-caps text-[13px] text-emerald-800 font-bold uppercase">Turno Activo en Sede Central</span>
-                </div>
-                <p className="font-body-sm text-[13px] text-emerald-700 truncate">
-                  3 barberos trabajando • 14 turnos agendados hoy
-                </p>
-              </div>
             </div>
 
             {/* Bottom Registration Link */}
@@ -373,37 +319,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
           </div>
         </div>
       </main>
-
-      {/* PIN Micro-dialog */}
-      {showPinModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-xs bg-white rounded-2xl p-5 shadow-2xl flex flex-col gap-4 text-center">
-            <div className="flex justify-between items-center">
-              <h3 className="font-headline-md text-lg text-slate-900 font-bold">Acceso Rápido con PIN</h3>
-              <button onClick={() => setShowPinModal(false)} className="text-slate-400 hover:text-slate-600">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <p className="font-body-sm text-xs text-slate-500">Ingresa tu código PIN de 4 dígitos para esta silla</p>
-            <input
-              type="password"
-              maxLength={4}
-              value={pinCode}
-              onChange={(e) => setPinCode(e.target.value)}
-              placeholder="••••"
-              autoFocus
-              className="w-full h-12 text-center text-2xl tracking-widest bg-slate-100 rounded-lg border border-slate-300 font-mono font-bold focus:outline-none focus:border-amber-500"
-            />
-            <button
-              type="button"
-              onClick={handlePinSubmit}
-              className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg uppercase tracking-wider"
-            >
-              Confirmar PIN
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
