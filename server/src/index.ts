@@ -127,6 +127,10 @@ if (fs.existsSync(distDir)) {
         if (base === 'index.html') {
           // Nunca cachear el HTML: cada carga revalida y apunta a los assets del deploy vigente
           res.setHeader('Cache-Control', 'no-cache');
+        } else if (filePath.endsWith('.webmanifest')) {
+          // El manifest también se revalida siempre: si no, el splash PWA (colores y
+          // nombre) sigue cacheado del primer deploy durante toda la vida del acceso directo.
+          res.setHeader('Cache-Control', 'no-cache');
         } else {
           // Los assets hasheados de Vite son inmutables: caché máxima
           res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
