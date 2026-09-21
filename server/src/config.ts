@@ -24,7 +24,8 @@ function expiresSeconds(exp: string): number {
  * Configuración endurecida:
  * - En producción se exige JWT_SECRET y DATABASE_URL (sin fallbacks ni secretos de desarrollo).
  * - CORS estricto vía CORS_ORIGIN (coma-separado); sin valor ⇒ solo mismo origen + localhost de dev.
- * - SSL de BD activado en producción o si la URL trae sslmode (desactivable con PGSSL=0).
+ * - SSL de BD activado en producción o si la URL trae sslmode. Verificación de certificado:
+ *   estricta por defecto, salvo para pooler.supabase.com (propio CA); override con PG_REJECT_UNAUTHORIZED=1/0.
  */
 export const config = {
   isProduction,
@@ -48,7 +49,18 @@ export const config = {
     process.env.PGSSL === '0'
       ? undefined
       : /sslmode=/.test(process.env.DATABASE_URL || '') || isProduction
-        ? { rejectUnauthorized: process.env.PG_REJECT_UNAUTHORIZED !== '0' }
+        ? {
+            // El pooler de Supabase presenta un certificado emitido por su propio CA
+            // (no es una CA pública). Con él la verificación estricta falla con
+            // "self-signed certificate in certificate chain". Por defecto se omite la
+            // verificación de cadena solo para pooler.supabase.com; se puede forzar
+            // con PG_REJECT_UNAUTHORIZED=1/0.
+            rejectUnauthorized: (() => {
+              const override = process.env.PG_REJECT_UNAUTHORIZED;
+              if (override !== undefined) return override !== '0';
+              return !/pooler\.supabase\.com/.test(process.env.DATABASE_URL || '');
+            })(),
+          }
         : undefined,
 };
 
