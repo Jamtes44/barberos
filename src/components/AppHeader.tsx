@@ -35,8 +35,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [shopName, setShopName] = useState<string>(() => getSessionShop()?.name ?? 'Mi Barbería');
 
-  // Determine current active role from prop or localStorage
-  const currentRole = propRole || (typeof window !== 'undefined' && localStorage.getItem('barberos_user_role') === 'barber' ? 'barber' : 'owner');
+  // Determine current active role: prefer the real logged-in role over the prop
+  // (las pantallas administradas fijan role="owner" por defecto)
+  const currentRole =
+    propRole === 'barber' ||
+    (typeof window !== 'undefined' && localStorage.getItem('barberos_user_role') === 'barber')
+      ? 'barber'
+      : 'owner';
 
   // Siempre usa la barbería del usuario logueado (evita mostrar una sede
   // guardada de otro dueño o sesión anterior).
@@ -103,15 +108,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   BarberOS
                 </span>
                 <span className="text-slate-400 text-[10px]">/</span>
-                <button
-                  type="button"
-                  onClick={() => setIsAdminSettingsOpen(true)}
-                  className="flex items-center gap-0.5 text-slate-700 hover:text-slate-900 py-0.5 px-1 rounded-md transition-colors cursor-pointer"
-                  title="Configurar sede"
-                >
-                  <span className="font-label-md text-xs font-semibold truncate max-w-[100px] sm:max-w-xs md:max-w-sm">{shopName}</span>
-                  <span className="material-symbols-outlined text-[16px] text-slate-400">expand_more</span>
-                </button>
+                {currentRole === 'owner' ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsAdminSettingsOpen(true)}
+                    className="flex items-center gap-0.5 text-slate-700 hover:text-slate-900 py-0.5 px-1 rounded-md transition-colors cursor-pointer"
+                    title="Configurar sede"
+                    aria-label="Configurar sede"
+                  >
+                    <span className="font-label-md text-xs font-semibold truncate max-w-[100px] sm:max-w-xs md:max-w-sm">{shopName}</span>
+                    <span className="material-symbols-outlined text-[16px] text-slate-400">expand_more</span>
+                  </button>
+                ) : (
+                  <span className="font-label-md text-xs font-semibold truncate max-w-[100px] sm:max-w-xs md:max-w-sm text-slate-600">
+                    {shopName}
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
                 <span className="relative flex h-2 w-2 shrink-0">
@@ -172,15 +184,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   : 'bg-[#8d4b00] hover:bg-[#723c00] text-white border-amber-700/50'
               }`}
             >
-              {currentRole === 'owner' ? (
-                <span className="material-symbols-outlined text-white text-[19px]">person</span>
-              ) : (
-                <img
-                  className="w-full h-full rounded-full object-cover"
-                  alt="Carlos Fade"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfZYOGJAgxMSZIvlX2W8LeWdsGH5_NQ1wvKLiDERRaDILDk80xpLQVxDaPxFWsTsMvWL5aOyl1CfTnjTtX3EZYo_vZrxtl2MkMYrBenJZWMnPgE6SzhpX4bhfLsksqHN-DrqpfBuwEZ98ZcUZjHOshc8L9_oTL8zv2k8KST4GSsHQiB-Mhjc5xETP2YZAiDz7llOuXjXFmHDO7Tbxk2O3L6LU8DgnIhf_-pR10QGsPmCXBnKwmPCNO"
-                />
-              )}
+              <span className="material-symbols-outlined text-white text-[19px]">person</span>
             </button>
 
             {/* Floating Account Dropdown Menu */}
@@ -189,7 +193,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               onClose={() => setIsAccountMenuOpen(false)}
               role={currentRole}
               businessName={shopName}
-              ownerName="Carlos Mendoza"
+              ownerName={getSessionUser()?.fullName ?? 'Mi cuenta'}
               barberName="Carlos Fade"
               chairLabel="Silla #1"
               onOpenBusinessSettings={() => setIsAdminSettingsOpen(true)}

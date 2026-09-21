@@ -19,6 +19,7 @@ import { BarbersCommissionsScreen } from './components/BarbersCommissionsScreen'
 import { ConfirmExitModal } from './components/ConfirmExitModal';
 import { PushNotificationBanner } from './components/PushNotificationBanner';
 import { BarberCheckoutScreen } from './components/BarberCheckoutScreen';
+import { BarberBalanceScreen } from './components/BarberBalanceScreen';
 
 const AUTHENTICATED_SCREENS: ScreenId[] = [
   'owner_dashboard',
@@ -27,10 +28,22 @@ const AUTHENTICATED_SCREENS: ScreenId[] = [
   'services_pricing',
   'barber_terminal',
   'barber_checkout',
+  'barber_balance',
   'clients_list',
   'clients_history',
   'reports_finance',
   'barbers_commissions',
+];
+
+// Pantallas exclusivas de administración: un barbero jamás las alcanza.
+const ADMIN_ONLY_SCREENS: ScreenId[] = [
+  'owner_dashboard',
+  'agenda_general',
+  'sales_cash',
+  'services_pricing',
+  'reports_finance',
+  'barbers_commissions',
+  'wompi_plan',
 ];
 
 export default function App() {
@@ -70,13 +83,20 @@ export default function App() {
       return;
     }
 
+    // Un barbero solo ve su terminal y su balance; lo demás está vetado.
+    if (userRole === 'barber' && ADMIN_ONLY_SCREENS.includes(screen)) {
+      setCurrentScreen('barber_terminal');
+      setTransition('none');
+      return;
+    }
+
     if (AUTHENTICATED_SCREENS.includes(screen)) {
       setIsLoggedIn(true);
     } else if (screen === 'login') {
       setIsLoggedIn(false);
     }
 
-    if (screen === 'barber_terminal' || screen === 'barber_checkout') {
+    if (screen === 'barber_terminal' || screen === 'barber_checkout' || screen === 'barber_balance') {
       setUserRole('barber');
       try {
         localStorage.setItem('barberos_user_role', 'barber');
@@ -193,6 +213,8 @@ export default function App() {
         return <BarberTerminalScreen onNavigate={navigate} onBack={goBack} />;
       case 'barber_checkout':
         return <BarberCheckoutScreen onNavigate={navigate} onBack={goBack} />;
+      case 'barber_balance':
+        return <BarberBalanceScreen onNavigate={navigate} onBack={goBack} />;
       case 'clients_list':
         return <ClientsListScreen onNavigate={navigate} onBack={goBack} />;
       case 'clients_history':

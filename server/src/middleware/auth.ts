@@ -47,7 +47,7 @@ export function signToken(userId: string, tokenVersion: number): string {
   });
 }
 
-function readCookie(req: Request, name: string): string | null {
+export function readCookie(req: Request, name: string): string | null {
   const header = req.headers.cookie || '';
   for (const part of header.split(';')) {
     const [k, ...rest] = part.trim().split('=');

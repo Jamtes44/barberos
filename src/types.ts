@@ -9,6 +9,7 @@ export type ScreenId =
   | 'services_pricing'
   | 'barber_terminal'
   | 'barber_checkout'
+  | 'barber_balance'
   | 'clients_list'
   | 'clients_history'
   | 'reports_finance'

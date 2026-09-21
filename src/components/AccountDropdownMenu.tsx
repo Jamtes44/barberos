@@ -96,11 +96,17 @@ export const AccountDropdownMenu: React.FC<AccountDropdownMenuProps> = ({
                   </div>
                 ) : (
                   <div className="relative w-12 h-12 shrink-0">
-                    <img
-                      className="w-12 h-12 rounded-xl object-cover border-2 border-amber-500 shadow-sm"
-                      alt={displayBarberName}
-                      src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfZYOGJAgxMSZIvlX2W8LeWdsGH5_NQ1wvKLiDERRaDILDk80xpLQVxDaPxFWsTsMvWL5aOyl1CfTnjTtX3EZYo_vZrxtl2MkMYrBenJZWMnPgE6SzhpX4bhfLsksqHN-DrqpfBuwEZ98ZcUZjHOshc8L9_oTL8zv2k8KST4GSsHQiB-Mhjc5xETP2YZAiDz7llOuXjXFmHDO7Tbxk2O3L6LU8DgnIhf_-pR10QGsPmCXBnKwmPCNO"
-                    />
+                    <div
+                      className="w-12 h-12 rounded-xl bg-amber-600 text-white flex items-center justify-center text-sm font-bold border-2 border-amber-500 shadow-sm"
+                      aria-label={displayBarberName}
+                    >
+                      {displayBarberName
+                        .split(' ')
+                        .filter(Boolean)
+                        .slice(0, 2)
+                        .map((w) => w[0]?.toUpperCase() ?? '')
+                        .join('') || 'BA'}
+                    </div>
                     <span className="absolute -bottom-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-white text-[9px] font-bold ring-2 ring-white">
                       ✓
                     </span>

@@ -1,14 +1,24 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScreenId, TransitionType } from '../types';
 import { AccountDropdownMenu } from './AccountDropdownMenu';
-import { Appointment, Sale, getSessionUser, apiAppointments, apiSales } from '../services/api';
+import {
+  Appointment,
+  Barber,
+  Sale,
+  getSessionUser,
+  getSessionShop,
+  apiAppointments,
+  apiSales,
+  apiBarbers,
+  apiShop,
+} from '../services/api';
 
 interface BarberTerminalScreenProps {
   onNavigate: (screen: ScreenId, transition?: TransitionType) => void;
   onBack?: () => void;
 }
 
-const COMMISSION_RATE = 0.5;
+const SELECTED_CLIENT_KEY = 'barberos_selected_client';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const localDate = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -16,9 +26,36 @@ const fmtCOP = (n: number) => `$${Math.round(n || 0).toLocaleString('es-CO')}`;
 const fmtTime = (iso: string | null) =>
   iso ? new Date(iso).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }) : '—';
 
+// Comisión real del barbero según su esquema en la BD (igual que la caja POS).
+const commissionOf = (barber: Barber | null, price: number, fallbackRate = 0.5): number => {
+  const scheme = barber?.commission_scheme;
+  const value = barber?.commission_value ?? null;
+  if (scheme === 'fixed') return Math.round(Number(value) || 0);
+  if (scheme === 'none') return 0;
+  if (scheme === 'percentage' && value !== null && value !== undefined) {
+    return Math.round((price * Number(value)) / 100);
+  }
+  return Math.round(price * fallbackRate);
+};
+
+const commissionLabelOf = (barber: Barber | null, fallbackRate = 0.5): string => {
+  const scheme = barber?.commission_scheme;
+  const value = barber?.commission_value ?? null;
+  if (scheme === 'fixed') return `${fmtCOP(Number(value) || 0)} por cobro`;
+  if (scheme === 'none') return 'Sin comisión';
+  if (scheme === 'percentage' && value !== null && value !== undefined) {
+    return `${value}% Comisión`;
+  }
+  return `${Math.round(fallbackRate * 100)}% Comisión`;
+};
+
 export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNavigate, onBack }) => {
   const [sessionUser] = useState(() => getSessionUser());
-  const [timerMinutes, setTimerMinutes] = useState(28);
+  const sessionShop = getSessionShop();
+  const [barber, setBarber] = useState<Barber | null>(null);
+  const [shopName, setShopName] = useState<string>(sessionShop?.name ?? 'Mi barbería');
+  const [elapsedOffset, setElapsedOffset] = useState(0);
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
@@ -41,12 +78,16 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
       return;
     }
     try {
-      const [apts, sales] = await Promise.all([
+      const [apts, sales, shop, barbers] = await Promise.all([
         apiAppointments.list({ from: today, to: today, barberId: u.barberId ?? undefined }),
         apiSales.list({ from: today, to: today, barberId: u.barberId ?? undefined }),
+        apiShop.get(),
+        apiBarbers.list(),
       ]);
       setAppointments(apts);
       setTodaySales(sales);
+      setShopName(shop.name);
+      setBarber(barbers.find((b) => b.user_id === u.id) ?? barbers.find((b) => b.id === u.barberId) ?? null);
     } catch (err) {
       showToast(`No se pudo cargar tu jornada: ${(err as Error).message}`);
     } finally {
@@ -58,7 +99,16 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
     load();
   }, [load]);
 
-  const barberName = sessionUser?.fullName || 'Carlos Fade';
+  useEffect(() => {
+    const t = window.setInterval(() => setNowTick(Date.now()), 30000);
+    return () => window.clearInterval(t);
+  }, []);
+
+  const barberName = sessionUser?.fullName || barber?.name || 'Barbero';
+
+  const chairLabel = barber?.chair || 'Mi silla';
+  const myCommissionLabel = commissionLabelOf(barber);
+  const myCommissionRate = barber?.commission_scheme === 'percentage' ? (Number(barber.commission_value) || 0) / 100 : 0.5;
 
   const myAppointments = appointments.filter(
     (a) => !sessionUser?.barberId || a.barber_id === sessionUser.barberId,
@@ -104,6 +154,30 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
     }
   };
 
+  const handleNotifyClient = (a: Appointment) => {
+    const phone = (a.phone || '').replace(/\D/g, '');
+    if (!phone || phone.length < 10) {
+      showToast('Este turno no tiene teléfono para avisar');
+      return;
+    }
+    const msg = `¡Hola ${a.client_name}! Te avisamos desde *${shopName}*: tu turno ya está por empezar. Te esperamos 😉`;
+    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer');
+    showToast(`Notificando a ${a.client_name} por WhatsApp`);
+  };
+
+  const handleOpenClientFile = (a: Appointment) => {
+    if (!a.client_id) {
+      showToast('Este cliente aún no tiene ficha registrada');
+      return;
+    }
+    try {
+      sessionStorage.setItem(SELECTED_CLIENT_KEY, a.client_id);
+    } catch {
+      // Ignorar
+    }
+    onNavigate('clients_history', 'none');
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] text-[#0f172a] flex flex-col pt-safe pb-safe select-none">
       {/* Header with barber profile button matching xpath:
@@ -132,9 +206,9 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
             </div>
             <div>
               <span className="font-label-caps text-[11px] text-amber-700 font-bold uppercase tracking-wider block">
-                Silla #1 · Terminal Barbero
+                {chairLabel} · Terminal Barbero
               </span>
-              <span className="font-headline-md text-base text-slate-900 font-bold">Black Crown Studio</span>
+              <span className="font-headline-md text-base text-slate-900 font-bold">{shopName}</span>
             </div>
           </div>
 
@@ -149,11 +223,12 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
               title="Mi perfil y comisiones"
               className="flex items-center gap-2 pl-2 pr-2.5 py-1.5 rounded-full bg-slate-100 hover:bg-slate-200 active:scale-95 text-slate-800 transition-all cursor-pointer border border-slate-200 shadow-2xs"
             >
-              <img
-                className="w-7 h-7 rounded-full object-cover border border-amber-500"
-                alt={barberName}
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBfZYOGJAgxMSZIvlX2W8LeWdsGH5_NQ1wvKLiDERRaDILDk80xpLQVxDaPxFWsTsMvWL5aOyl1CfTnjTtX3EZYo_vZrxtl2MkMYrBenJZWMnPgE6SzhpX4bhfLsksqHN-DrqpfBuwEZ98ZcUZjHOshc8L9_oTL8zv2k8KST4GSsHQiB-Mhjc5xETP2YZAiDz7llOuXjXFmHDO7Tbxk2O3L6LU8DgnIhf_-pR10QGsPmCXBnKwmPCNO"
-              />
+              <span
+                className="w-7 h-7 rounded-full bg-[#8d4b00] text-white flex items-center justify-center text-xs font-bold border border-amber-500 shrink-0"
+                aria-label={barberName}
+              >
+                {initialsOf(barberName)}
+              </span>
               <span className="font-label-md text-xs font-bold text-slate-900">{barberName}</span>
               <span className="material-symbols-outlined text-sm text-slate-500">
                 {isAccountMenuOpen ? 'expand_less' : 'expand_more'}
@@ -166,10 +241,10 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
               onClose={() => setIsAccountMenuOpen(false)}
               role="barber"
               barberName={barberName}
-              chairLabel="Silla #1"
-              businessName="Black Crown Barber Shop"
+              chairLabel={chairLabel}
+              businessName={shopName}
               onNavigateCommissions={() => {
-                onNavigate('barbers_commissions', 'push');
+                onNavigate('barber_balance', 'push');
               }}
               onLogout={() => {
                 onNavigate('login', 'push_back');
@@ -197,7 +272,7 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
               <span className="font-body-sm text-xs text-slate-500">Terminal táctil personal</span>
             </div>
             <span className="font-label-caps text-[11px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded font-bold">
-              50% Comisión
+              {myCommissionLabel}
             </span>
           </div>
 
@@ -218,7 +293,7 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
               <span className="font-currency-metric text-2xl sm:text-3xl text-white font-bold mt-1">
                 {fmtCOP(myEarnings)}
               </span>
-              <span className="font-body-sm text-[10px] sm:text-xs text-white/90 font-medium">50% liquidable</span>
+              <span className="font-body-sm text-[10px] sm:text-xs text-white/90 font-medium">{myCommissionLabel}</span>
             </div>
 
             <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex flex-col justify-between">
@@ -247,7 +322,7 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
                   </span>
                   <div className="text-left normal-case">
                     <span className="font-bold text-sm block leading-none">Cobro en Silla (Barbero)</span>
-                    <span className="text-[10px] text-amber-100 font-medium">Calcula tu comisión (50%) y propina directa</span>
+                    <span className="text-[10px] text-amber-100 font-medium">Calcula tu comisión ({myCommissionLabel}) y propina directa</span>
                   </div>
                 </div>
                 <span className="material-symbols-outlined text-xl">arrow_forward</span>
@@ -288,8 +363,8 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
                           </span>
                           <span className="text-slate-300">•</span>
                           <span className="font-label-caps text-xs text-emerald-600 font-bold">
-                            Tu comisión: {fmtCOP(Math.round(currentAppt.price * COMMISSION_RATE))}
-                          </span>
+                          Tu comisión: {fmtCOP(commissionOf(barber, currentAppt.price, myCommissionRate))}
+                        </span>
                         </div>
                       </div>
                     </div>
@@ -300,13 +375,17 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
                         <span className="material-symbols-outlined text-amber-600">timer</span>
                         <div>
                           <span className="font-label-md text-xs text-slate-500 block">Tiempo en Silla</span>
-                          <span className="font-headline-md text-lg text-slate-900 font-bold">{timerMinutes} min / 45 min</span>
+                          <span className="font-headline-md text-lg text-slate-900 font-bold">
+                            {currentAppt
+                              ? `${Math.max(0, Math.round((nowTick - new Date(currentAppt.start_at).getTime()) / 60000)) + elapsedOffset} min / 45 min`
+                              : '0 min / 45 min'}
+                          </span>
                         </div>
                       </div>
                       <button
                         type="button"
                         onClick={() => {
-                          setTimerMinutes((prev) => prev + 5);
+                          setElapsedOffset((prev) => prev + 5);
                           showToast('+5 min añadidos al corte');
                         }}
                         className="px-3 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-700 font-label-md text-xs font-semibold hover:bg-slate-100 cursor-pointer"
@@ -318,7 +397,7 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
                     <div className="grid grid-cols-2 gap-2 pt-1">
                       <button
                         type="button"
-                        onClick={() => onNavigate('clients_history', 'none')}
+                        onClick={() => handleOpenClientFile(currentAppt)}
                         className="h-10 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 font-label-md text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <span className="material-symbols-outlined text-sm">history_edu</span>
@@ -363,7 +442,7 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
                     <div className="flex items-center gap-1.5">
                       <button
                         type="button"
-                        onClick={() => showToast(`Notificando a ${nextAppt.client_name}`)}
+                        onClick={() => handleNotifyClient(nextAppt)}
                         className="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-800 font-label-md text-xs font-bold border border-amber-200 hover:bg-amber-100 cursor-pointer"
                       >
                         Avisar
@@ -430,7 +509,7 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
                         <div className="text-right">
                           <span className="font-headline-md text-xs text-slate-900 font-bold">{fmtCOP(a.price)}</span>
                           <span className="font-label-caps text-[10px] text-emerald-600 block">
-                            + {fmtCOP(Math.round(a.price * COMMISSION_RATE))} com.
+                            + {fmtCOP(commissionOf(barber, a.price, myCommissionRate))} com.
                           </span>
                         </div>
                       </div>

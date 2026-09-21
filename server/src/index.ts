@@ -56,6 +56,17 @@ app.use(
   }),
 );
 
+// Permissions-Policy: solo features ampliamente soportadas. Evita los avisos
+// de consola por features desconocidas ('attribution-reporting', etc.) que
+// añadía el default de helmet v7 en despliegues anteriores.
+app.use((_req, res, next) => {
+  res.setHeader(
+    'Permissions-Policy',
+    'accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()',
+  );
+  next();
+});
+
 // ----- CORS estricto (lista blanca) -----
 app.use(
   cors({

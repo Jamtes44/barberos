@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { query, queryOne } from '../db.js';
 import { AppError, asyncHandler, requireFields } from '../util.js';
+import { config } from '../config.js';
 import {
   requireAuth,
   signToken,
   loadUserById,
+  readCookie,
   setSessionCookie,
   clearSessionCookie,
 } from '../middleware/auth.js';
@@ -127,14 +130,29 @@ router.get(
   }),
 );
 
-/** POST /api/auth/logout — invalida la sesión (revoca el token) y borra la cookie. */
+/**
+ * POST /api/auth/logout — invalida la sesión (si el token aún es válido) y borra la cookie.
+ * No exige un token válido: con sesión expirada/revocada responde 200 igualmente,
+ * evita el 401 molesto al cerrar sesión.
+ */
 router.post(
   '/logout',
-  requireAuth,
   asyncHandler(async (req, res) => {
-    await query(`UPDATE users SET token_version = token_version + 1 WHERE id = $1`, [
-      req.user!.id,
-    ]);
+    const header = req.headers.authorization || '';
+    let token = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) {
+      token = readCookie(req, config.sessionCookieName);
+    }
+    if (token) {
+      try {
+        const payload = jwt.verify(token, config.jwtSecret) as jwt.JwtPayload;
+        if (payload.sub) {
+          await query(`UPDATE users SET token_version = token_version + 1 WHERE id = $1`, [payload.sub]);
+        }
+      } catch {
+        // Token expirado/inválido: la sesión local se cierra igualmente (200).
+      }
+    }
     clearSessionCookie(res);
     res.json({ ok: true });
   }),

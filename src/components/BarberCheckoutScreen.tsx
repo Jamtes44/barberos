@@ -4,6 +4,7 @@ import { ScreenId, TransitionType } from '../types';
 import { pushService } from '../services/pushNotificationService';
 import {
   getSessionUser,
+  getSessionShop,
   apiAppointments,
   apiServices,
   apiBarbers,
@@ -340,7 +341,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
 
   const handleSendWhatsAppReceipt = (sale: BarberCompletedSale) => {
     const text = encodeURIComponent(
-      `💈 *Black Crown Barber Shop - Comprobante Digital*\n` +
+      `💈 *${getSessionShop()?.name || 'Mi barbería'} - Comprobante Digital*\n` +
         `Hola ${sale.clientName}, gracias por atenderte hoy con *${barberDisplayName} (${chairDisplay})*.\n\n` +
         `✂️ *Servicios:* ${sale.services.join(', ')}\n` +
         `💵 *Total Pagado:* $${sale.total.toLocaleString('es-CO')} COP\n` +
