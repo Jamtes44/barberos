@@ -107,9 +107,35 @@ app.use('/api', (_req: Request, res: Response) => {
 // ----- Estáticos (build de Vite) -----
 const distDir = path.resolve(process.cwd(), 'dist');
 if (fs.existsSync(distDir)) {
-  app.use(express.static(distDir, { dotfiles: 'deny', index: 'index.html' }));
-  app.get(/^\/(?!api).*/, (_req: Request, res: Response) => {
-    res.sendFile(path.join(distDir, 'index.html'));
+  app.use(
+    express.static(distDir, {
+      dotfiles: 'deny',
+      index: 'index.html',
+      setHeaders: (res, filePath) => {
+        const base = path.basename(filePath);
+        if (base === 'index.html') {
+          // Nunca cachear el HTML: cada carga revalida y apunta a los assets del deploy vigente
+          res.setHeader('Cache-Control', 'no-cache');
+        } else {
+          // Los assets hasheados de Vite son inmutables: caché máxima
+          res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        }
+        if (filePath.endsWith('.webmanifest')) {
+          res.type('application/manifest+json');
+        }
+      },
+    })
+  );
+  // SPA fallback: solo rutas de navegación (sin extensión de archivo) reciben index.html.
+  // Un asset ausente (p. ej. CSS viejo en caché de otro deploy) responde 404 real en vez
+  // de HTML con Content-Type text/html, que el navegador rechaza por strict MIME checking.
+  app.get(/^\/(?!api).*/, (req: Request, res: Response) => {
+    if (path.extname(req.path)) {
+      return res.status(404).end();
+    }
+    res.sendFile(path.join(distDir, 'index.html'), {
+      headers: { 'Cache-Control': 'no-cache' },
+    });
   });
 }
 
