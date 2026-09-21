@@ -36,7 +36,6 @@ const AUTHENTICATED_SCREENS: ScreenId[] = [
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<ScreenId>('login');
   const [transition, setTransition] = useState<TransitionType>('none');
-  const [showQuickSwitcher, setShowQuickSwitcher] = useState(false);
   const [history, setHistory] = useState<ScreenId[]>(['login']);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
@@ -207,78 +206,10 @@ export default function App() {
     }
   };
 
-  const screensList: { id: ScreenId; label: string; number: number }[] = [
-    { id: 'login', label: '1. Login con Selección de Rol', number: 1 },
-    { id: 'forgot_password', label: '1b. Recuperar Contraseña', number: 2 },
-    { id: 'wompi_plan', label: '2. Configuración Inicial y Plan Wompi', number: 3 },
-    { id: 'register_shop', label: '3. Registro de Barbería', number: 4 },
-    { id: 'agenda_general', label: '4. Agenda General', number: 5 },
-    { id: 'owner_dashboard', label: '5. Dashboard del Dueño', number: 6 },
-    { id: 'sales_cash', label: '6. Ventas y Caja en Tiempo Real', number: 7 },
-    { id: 'services_pricing', label: '7. Servicios y Precios', number: 8 },
-    { id: 'barber_terminal', label: '8. Agenda y Terminal de Barbero', number: 9 },
-    { id: 'barber_checkout', label: '8b. Cobro Rápido en Silla (Exclusivo Barbero)', number: 10 },
-    { id: 'clients_list', label: '9. Directorio y Lista de Clientes', number: 11 },
-    { id: 'clients_history', label: '9b. Ficha de Historial de Cliente', number: 12 },
-    { id: 'reports_finance', label: '10. Reportes y Finanzas', number: 13 },
-    { id: 'barbers_commissions', label: '11. Barberos y Comisiones', number: 14 },
-  ];
-
-  const variants = getAnimationVariants(transition);
+const variants = getAnimationVariants(transition);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col relative w-full overflow-x-hidden">
-      {/* Quick Navigation Floating Shortcut for Prototyping/Testing */}
-      <div className="fixed top-2 right-2 z-50">
-        <button
-          type="button"
-          onClick={() => setShowQuickSwitcher(!showQuickSwitcher)}
-          className="px-2.5 py-1 rounded-full bg-slate-900/80 hover:bg-slate-900 text-white font-label-caps text-[10px] tracking-wider uppercase font-bold flex items-center gap-1 shadow-lg backdrop-blur-md cursor-pointer border border-white/20 transition-all opacity-85 hover:opacity-100"
-          title="Saltar a cualquier pantalla del prototipo"
-        >
-          <span className="material-symbols-outlined text-[14px]">layers</span>
-          <span>13 Pantallas</span>
-          <span className="material-symbols-outlined text-[12px]">
-            {showQuickSwitcher ? 'expand_less' : 'expand_more'}
-          </span>
-        </button>
-
-        {showQuickSwitcher && (
-          <div className="absolute right-0 mt-1 w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 z-50 flex flex-col gap-1 max-h-[80vh] overflow-y-auto">
-            <div className="px-2 py-1 flex items-center justify-between border-b border-slate-100">
-              <span className="font-label-caps text-[11px] text-slate-500 font-bold uppercase">
-                Explorar Pantallas BarberOS
-              </span>
-              <button
-                onClick={() => setShowQuickSwitcher(false)}
-                className="text-slate-400 hover:text-slate-700 p-1"
-              >
-                <span className="material-symbols-outlined text-sm">close</span>
-              </button>
-            </div>
-            {screensList.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  navigate(s.id, 'none');
-                  setShowQuickSwitcher(false);
-                }}
-                className={`w-full text-left px-2.5 py-2 rounded-xl text-xs font-medium flex items-center justify-between transition-colors ${
-                  currentScreen === s.id
-                    ? 'bg-amber-50 text-[#8d4b00] font-bold border border-amber-200'
-                    : 'text-slate-700 hover:bg-slate-100'
-                }`}
-              >
-                <span className="truncate">{s.label}</span>
-                {currentScreen === s.id && (
-                  <span className="material-symbols-outlined text-sm text-amber-600">check</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={currentScreen}
