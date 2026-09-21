@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ScreenId, TransitionType } from '../types';
 import { AccountDropdownMenu } from './AccountDropdownMenu';
+import { BrandEmblem } from './BrandEmblem';
 import {
   Appointment,
   Barber,
@@ -199,11 +200,7 @@ export const BarberTerminalScreen: React.FC<BarberTerminalScreenProps> = ({ onNa
               </button>
             )}
 
-            <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-white shadow-xs">
-              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                content_cut
-              </span>
-            </div>
+            <BrandEmblem size="sm" />
             <div>
               <span className="font-label-caps text-[11px] text-amber-700 font-bold uppercase tracking-wider block">
                 {chairLabel} · Terminal Barbero

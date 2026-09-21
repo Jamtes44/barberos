@@ -10,6 +10,7 @@ import {
   apiBarbers,
   apiShop,
 } from '../services/api';
+import { BrandEmblem } from './BrandEmblem';
 
 interface BarberBalanceScreenProps {
   onNavigate: (screen: ScreenId, transition?: TransitionType) => void;
@@ -119,11 +120,7 @@ export const BarberBalanceScreen: React.FC<BarberBalanceScreenProps> = ({ onNavi
                 <span className="material-symbols-outlined text-[19px]">arrow_back</span>
               </button>
             )}
-            <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-white shadow-xs">
-              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                account_balance_wallet
-              </span>
-            </div>
+<BrandEmblem size="sm" />
             <div>
               <span className="font-label-caps text-[11px] text-amber-700 font-bold uppercase tracking-wider block">
                 Mi Balance

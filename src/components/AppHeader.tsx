@@ -4,6 +4,7 @@ import { AccountDropdownMenu } from './AccountDropdownMenu';
 import { AdminSettingsModal } from './AdminSettingsModal';
 import { MyPlanModal } from './MyPlanModal';
 import { getSessionShop, getSessionUser, getToken, saveSession, apiShop } from '../services/api';
+import { BrandEmblem } from './BrandEmblem';
 
 interface AppHeaderProps {
   currentSection?: string;
@@ -96,11 +97,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             )}
 
             {/* Logo mark */}
-            <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center text-white shrink-0 shadow-sm">
-              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                content_cut
-              </span>
-            </div>
+            <BrandEmblem />
 
             <div className="flex flex-col min-w-0">
               <div className="flex items-center gap-1.5">
