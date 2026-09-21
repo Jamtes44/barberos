@@ -133,7 +133,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
   // Tip & Payment
   const [tipAmount, setTipAmount] = useState<number>(5000);
   const [customTip, setCustomTip] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'nequi' | 'tarjeta' | 'caja_central'>('efectivo');
+  const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'nequi' | 'tarjeta'>('efectivo');
   const [receivedCash, setReceivedCash] = useState<number>(50000);
   const [customReceivedCash, setCustomReceivedCash] = useState<string>('');
   const [showNequiQrModal, setShowNequiQrModal] = useState(false);
@@ -835,7 +835,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                   <span>4. Método de Cobro</span>
                 </span>
 
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-3 gap-1.5">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('efectivo')}
@@ -859,7 +859,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                     }`}
                   >
                     <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
-                    <span className="font-bold text-[10px]">Nequi/QR</span>
+                    <span className="font-bold text-[10px]">Nequi</span>
                   </button>
 
                   <button
@@ -872,20 +872,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                     }`}
                   >
                     <span className="material-symbols-outlined text-[18px]">contactless</span>
-                    <span className="font-bold text-[10px]">Datáfono</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('caja_central')}
-                    className={`p-2 rounded-xl text-center border transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
-                      paymentMethod === 'caja_central'
-                        ? 'bg-amber-600 text-white border-amber-600 shadow-xs'
-                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[18px]">storefront</span>
-                    <span className="font-bold text-[10px]">Recepción</span>
+                    <span className="font-bold text-[10px]">Tarjeta</span>
                   </button>
                 </div>
 
@@ -963,15 +950,6 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                       <span className="material-symbols-outlined text-[16px]">qr_code</span>
                       <span>Ver Código QR</span>
                     </button>
-                  </div>
-                )}
-
-                {paymentMethod === 'caja_central' && (
-                  <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                    <span className="font-bold block">Envío a Caja Central</span>
-                    <span className="text-[11px] text-amber-800">
-                      El ticket se registrará como pendiente de pago en recepción para que el cliente pague al salir.
-                    </span>
                   </div>
                 )}
               </div>
