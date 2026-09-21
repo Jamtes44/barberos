@@ -6,7 +6,12 @@ import { apiAppointments, apiBarbers, apiServices } from '../services/api';
 
 // ---------- Helpers (módulo) ----------
 const DAY_MS = 86_400_000;
-const dayKey = (d: Date) => Math.floor(d.getTime() / DAY_MS);
+// Día local -> índice UTC del día (medianoche local). Evita el desfase de -5h que hacía
+// que `new Date(k * DAY_MS)` cayera en la tarde del día ANTERIOR y movía semanas/clics.
+const dayKey = (d: Date) => {
+  const local = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.floor(local.getTime() / DAY_MS);
+};
 const pad = (n: number) => String(n).padStart(2, '0');
 const fmtTime = (iso: string) => {
   const d = new Date(iso);
@@ -16,19 +21,14 @@ const fmtTime = (iso: string) => {
   h = h % 12 || 12;
   return `${pad(h)}:${pad(m)} ${ampm}`;
 };
-// Hora actual en formato 'HH:MM AM/PM' (para la Cita Express al día y hora reales)
-const fmtNowSlot = () => {
-  const d = new Date();
-  let h = d.getHours();
-  const m = d.getMinutes();
-  const ampm = h >= 12 ? 'PM' : 'AM';
-  h = h % 12 || 12;
-  return `${pad(h)}:${pad(m)} ${ampm}`;
-};
 const WEEK_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const FULL_DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-const dateFromKey = (k: number) => new Date(k * DAY_MS);
+// Reconstruye la medianoche LOCAL de un día-key (sin caer a las 19:00 del día anterior)
+const dateFromKey = (k: number) => {
+  const utc = new Date(k * DAY_MS);
+  return new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
+};
 const fmtLongDay = (k: number) => {
   const d = dateFromKey(k);
   return `${FULL_DAYS[d.getDay()]} ${d.getDate()} de ${MONTHS[d.getMonth()]}`;
@@ -122,7 +122,7 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
     serviceId: '',
     price: 0,
     day: dayKey(new Date()),
-    time: fmtNowSlot(),
+    time: 'Ahora mismo',
     isWalkIn: false,
     sendWhatsapp: true,
   });
@@ -243,12 +243,12 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
       ? `${topBarber.name} (${Math.round((topBarber.n / Math.max(1, weekAppointments.length)) * 100)}%)`
       : '—';
 
-  // Abrir el modal de Cita Express (por defecto: día y hora actuales)
+  // Abrir el modal de Cita Express (por defecto: día actual y hora real vía 'Ahora mismo')
   const handleOpenExpressModal = (slotTime?: string, targetDay?: number) => {
     setExpressForm((prev) => ({
       ...prev,
       day: targetDay ?? dayKey(new Date()),
-      time: slotTime ?? fmtNowSlot(),
+      time: slotTime ?? 'Ahora mismo',
       clientName: prev.clientName || 'Cliente Express / Walk-in',
     }));
     setShowExpressModal(true);
