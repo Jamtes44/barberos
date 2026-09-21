@@ -38,28 +38,21 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   // Determine current active role from prop or localStorage
   const currentRole = propRole || (typeof window !== 'undefined' && localStorage.getItem('barberos_user_role') === 'barber' ? 'barber' : 'owner');
 
-  // Sync shop name from the real session shop (refetch when settings modal closes)
+  // Siempre usa la barbería del usuario logueado (evita mostrar una sede
+  // guardada de otro dueño o sesión anterior).
   useEffect(() => {
-    const syncShopName = () => {
-      const shop = getSessionShop();
-      if (shop) {
-        setShopName(shop.name);
-        return;
-      }
-      const user = getSessionUser();
-      if (!user) return;
-      apiShop
-        .get()
-        .then((s) => {
-          setShopName(s.name);
-          const token = getToken();
-          if (token) saveSession(token, user, s);
-        })
-        .catch(() => {
-          // Ignorar: se mantiene el valor por defecto
-        });
-    };
-    syncShopName();
+    const user = getSessionUser();
+    if (!user) return;
+    apiShop
+      .get()
+      .then((s) => {
+        setShopName(s.name);
+        const token = getToken();
+        if (token) saveSession(token, user, s);
+      })
+      .catch(() => {
+        // Ignorar: se mantiene el valor por defecto
+      });
   }, [isAdminSettingsOpen]);
 
   const handleToggleAccountMenu = () => {

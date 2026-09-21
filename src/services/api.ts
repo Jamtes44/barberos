@@ -2,7 +2,6 @@
 
 const TOKEN_KEY = 'barberos_token';
 const USER_KEY = 'barberos_user';
-const SHOP_KEY = 'barberos_shop';
 
 export interface AuthUser {
   id: string;
@@ -111,9 +110,19 @@ export function getSessionUser(): AuthUser | null {
   }
 }
 
+function sessionShopKey(): string {
+  try {
+    const u = getSessionUser();
+    if (u?.id) return `barberos_shop_${u.id}`;
+  } catch {
+    // Ignore
+  }
+  return 'barberos_shop';
+}
+
 export function getSessionShop(): Shop | null {
   try {
-    const raw = localStorage.getItem(SHOP_KEY);
+    const raw = localStorage.getItem(sessionShopKey());
     return raw ? (JSON.parse(raw) as Shop) : null;
   } catch {
     return null;
@@ -125,7 +134,7 @@ export function saveSession(_token: string, user: AuthUser, shop?: Shop): void {
     // El token viaja en una cookie httpOnly (inaccesible desde JS) para evitar
     // robo por XSS. Aquí solo se guardan datos no sensibles de la sesión.
     localStorage.setItem(USER_KEY, JSON.stringify(user));
-    if (shop) localStorage.setItem(SHOP_KEY, JSON.stringify(shop));
+    if (shop) localStorage.setItem(sessionShopKey(), JSON.stringify(shop));
   } catch {
     // Ignore (storage lleno / bloqueado)
   }
@@ -135,7 +144,10 @@ export function clearSession(): void {
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(SHOP_KEY);
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k?.startsWith('barberos_shop')) localStorage.removeItem(k);
+    }
   } catch {
     // Ignore
   }
@@ -221,7 +233,7 @@ export async function apiMe() {
   try {
     localStorage.setItem(USER_KEY, JSON.stringify(res.user));
     if (res.shop) {
-      localStorage.setItem(SHOP_KEY, JSON.stringify(res.shop));
+      localStorage.setItem(sessionShopKey(), JSON.stringify(res.shop));
     }
   } catch {
     // Ignore

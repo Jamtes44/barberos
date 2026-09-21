@@ -16,6 +16,15 @@ const fmtTime = (iso: string) => {
   h = h % 12 || 12;
   return `${pad(h)}:${pad(m)} ${ampm}`;
 };
+// Hora actual en formato 'HH:MM AM/PM' (para la Cita Express al día y hora reales)
+const fmtNowSlot = () => {
+  const d = new Date();
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return `${pad(h)}:${pad(m)} ${ampm}`;
+};
 const WEEK_LABELS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 const FULL_DAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
@@ -100,7 +109,7 @@ interface ServiceOption {
 export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavigate, onBack }) => {
   const [activeDay, setActiveDay] = useState<number>(() => dayKey(new Date()));
   const [activeBarber, setActiveBarber] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'dia' | 'semana'>('dia');
+  const [viewMode, setViewMode] = useState<'dia' | 'semana'>('semana');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Express Appointment Modal State
@@ -113,7 +122,7 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
     serviceId: '',
     price: 0,
     day: dayKey(new Date()),
-    time: '01:00 PM',
+    time: fmtNowSlot(),
     isWalkIn: false,
     sendWhatsapp: true,
   });
@@ -234,12 +243,12 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
       ? `${topBarber.name} (${Math.round((topBarber.n / Math.max(1, weekAppointments.length)) * 100)}%)`
       : '—';
 
-  // Abrir el modal de Cita Express
+  // Abrir el modal de Cita Express (por defecto: día y hora actuales)
   const handleOpenExpressModal = (slotTime?: string, targetDay?: number) => {
     setExpressForm((prev) => ({
       ...prev,
-      day: targetDay ?? activeDay,
-      time: slotTime ?? '01:00 PM',
+      day: targetDay ?? dayKey(new Date()),
+      time: slotTime ?? fmtNowSlot(),
       clientName: prev.clientName || 'Cliente Express / Walk-in',
     }));
     setShowExpressModal(true);
@@ -298,18 +307,18 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
           {/* Header Bar: Date navigation & View switcher */}
           <div className="px-4 sm:px-6 lg:px-8 pt-4 pb-3 bg-white shadow-xs border-b border-slate-100">
             <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 min-w-0">
                 <button
                   type="button"
                   onClick={() => navBy(-1)}
-                  className="w-8 h-8 rounded-full bg-[#e5eeff] flex items-center justify-center text-[#565e74] active:scale-95 transition-transform cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#e5eeff] flex items-center justify-center text-[#565e74] active:scale-95 transition-transform cursor-pointer shrink-0"
                   title="Anterior (día anterior / semana anterior)"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                 </button>
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-headline-lg-mobile text-xl text-[#0f172a] tracking-wide font-bold">
+                    <span className="font-headline-lg-mobile text-xl text-[#0f172a] tracking-wide font-bold truncate">
                       {viewMode === 'dia' ? (
                         activeDayObj ? `${activeDayObj.fullName}, ${activeDayObj.num}` : fmtLongDay(activeDay)
                       ) : (
@@ -329,7 +338,7 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
                 <button
                   type="button"
                   onClick={() => navBy(1)}
-                  className="w-8 h-8 rounded-full bg-[#e5eeff] flex items-center justify-center text-[#565e74] active:scale-95 transition-transform cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#e5eeff] flex items-center justify-center text-[#565e74] active:scale-95 transition-transform cursor-pointer shrink-0"
                   title="Siguiente (día siguiente / semana siguiente)"
                 >
                   <span className="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -351,7 +360,7 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
               </div>
 
               {/* Segmented Control: Día vs Semana */}
-              <div className="flex items-center p-1 rounded-xl bg-[#f4f4f6] shadow-inner">
+              <div className="flex items-center p-1 rounded-xl bg-[#f4f4f6] shadow-inner shrink-0">
                 <button
                   type="button"
                   id="btn-view-day"
@@ -386,7 +395,7 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
                 <span className="material-symbols-outlined text-[16px]">chevron_left</span>
               </button>
 
-              <div className="flex-1 flex items-center justify-between gap-1.5 overflow-x-auto min-w-0">
+              <div className="flex-1 grid grid-cols-7 gap-1 min-w-0">
                 {weekDays.map((item) => {
                   const dayAptsCount = appointments.filter((a) => a.dayKey === item.key).length;
                   return (
@@ -396,21 +405,21 @@ export const AgendaGeneralScreen: React.FC<AgendaGeneralScreenProps> = ({ onNavi
                       onClick={() => {
                         setActiveDay(item.key);
                       }}
-                      className={`flex flex-col items-center justify-center py-2 px-2.5 min-w-[44px] rounded-xl transition-all cursor-pointer ${
+                      className={`flex flex-col items-center justify-center py-2 px-1 min-w-0 rounded-xl transition-all cursor-pointer ${
                         activeDay === item.key
                           ? 'bg-[#8d4b00] text-white shadow-md scale-105 font-bold'
                           : 'bg-[#f8fafc] text-[#1e293b] hover:bg-[#e5eeff]'
                       }`}
                     >
                       <span
-                        className={`font-label-md text-[11px] uppercase ${
+                        className={`font-label-md text-[10px] uppercase sm:text-[11px] ${
                           activeDay === item.key ? 'text-white/90' : 'text-[#64748b]'
                         }`}
                       >
                         {item.day}
                       </span>
                       <span
-                        className={`font-headline-md text-base mt-0.5 ${
+                        className={`font-headline-md text-sm sm:text-base mt-0.5 ${
                           activeDay === item.key ? 'text-white' : 'text-[#0f172a]'
                         }`}
                       >
