@@ -1,0 +1,22 @@
+# BarberOS · Render Blueprint (deploy de un solo servicio: SPA + API + BD Supabase)
+# Uso: Render -> New -> Blueprint -> conectar este repo.
+services:
+  - type: web
+    name: barberos-api
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+      - key: TRUST_PROXY
+        value: "true"

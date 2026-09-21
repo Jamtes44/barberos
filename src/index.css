@@ -1,0 +1,160 @@
+@import "tailwindcss";
+
+@layer base {
+  html, body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: #f8f9ff;
+    color: #0f172a;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+}
+
+/* Custom Typography Utility Classes
+   Viven en @layer components para que las utilities de Tailwind
+   (text-xs, font-bold, texto responsive, etc.) tengan prioridad. */
+@layer components {
+  .font-headline-lg-mobile {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 26px;
+    line-height: 32px;
+    letter-spacing: 0.01em;
+    font-weight: 600;
+  }
+
+  .font-headline-md {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 24px;
+    line-height: 30px;
+    letter-spacing: 0.01em;
+    font-weight: 600;
+  }
+
+  .font-headline-lg {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 32px;
+    line-height: 38px;
+    letter-spacing: 0.01em;
+    font-weight: 600;
+  }
+
+  .font-currency-metric {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 40px;
+    line-height: 44px;
+    letter-spacing: 0.01em;
+    font-weight: 700;
+  }
+
+  .font-label-caps {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    line-height: 16px;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+  }
+
+  .font-body-md {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 400;
+  }
+
+  .font-body-sm {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 13px;
+    line-height: 18px;
+    font-weight: 400;
+  }
+
+  .font-body-lg {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 18px;
+    line-height: 28px;
+    font-weight: 500;
+  }
+
+  .font-label-md {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 12px;
+    line-height: 16px;
+    letter-spacing: 0.02em;
+    font-weight: 600;
+  }
+
+  .font-label-lg {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 14px;
+    line-height: 20px;
+    letter-spacing: 0.01em;
+    font-weight: 600;
+  }
+}
+
+/* Palette custom utility classes */
+.bg-canvas-base { background-color: #ffffff; }
+.bg-surface-subtle { background-color: #f8fafc; }
+.bg-surface-muted { background-color: #f4f4f6; }
+.bg-surface-container { background-color: #e5eeff; }
+.bg-surface-container-low { background-color: #eff4ff; }
+.bg-surface-container-lowest { background-color: #ffffff; }
+.bg-surface-container-high { background-color: #dce9ff; }
+.bg-surface-container-highest { background-color: #d3e4fe; }
+.bg-surface-variant { background-color: #d3e4fe; }
+.bg-surface { background-color: #f8f9ff; }
+.bg-primary { background-color: #8d4b00; }
+.bg-primary-container { background-color: #f59e0b; }
+.bg-accent-gold { background-color: #f59e0b; }
+.bg-accent-amber-light { background-color: #fef3c7; }
+.bg-accent-amber-dark { background-color: #b45309; }
+.bg-nequi-magenta { background-color: #de1484; }
+.bg-nequi-soft { background-color: #fdf2f8; }
+.bg-tertiary { background-color: #006c49; }
+.bg-tertiary-container { background-color: #00a572; }
+.bg-tertiary-fixed { background-color: #6ffbbe; }
+.bg-secondary-container { background-color: #dae2fd; }
+.bg-error-container { background-color: #ffdad6; }
+
+.text-text-primary { color: #0f172a; }
+.text-text-secondary { color: #1e293b; }
+.text-text-muted { color: #64748b; }
+.text-primary { color: #8d4b00; }
+.text-on-primary { color: #ffffff; }
+.text-on-surface { color: #0b1c30; }
+.text-accent-gold { color: #f59e0b; }
+.text-accent-amber-dark { color: #b45309; }
+.text-nequi-magenta { color: #de1484; }
+.text-tertiary { color: #006c49; }
+.text-alert-crimson { color: #ef4444; }
+.text-on-tertiary-fixed { color: #002113; }
+.text-on-secondary-fixed-variant { color: #3f465c; }
+.text-on-primary-container { color: #fffbff; }
+.text-on-secondary-container { color: #5c647a; }
+
+.border-border-subtle { border-color: #e2e8f0; }
+.border-border-strong { border-color: #cbd5e1; }
