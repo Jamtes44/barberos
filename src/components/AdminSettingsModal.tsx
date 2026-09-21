@@ -1,7 +1,16 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ScreenId, TransitionType } from '../types';
-import { apiShop, getSessionShop, getSessionUser, getToken, saveSession } from '../services/api';
+import {
+  apiShop,
+  apiBarbers,
+  Barber,
+  Shop,
+  getSessionShop,
+  getSessionUser,
+  getToken,
+  saveSession,
+} from '../services/api';
 
 interface AdminSettingsModalProps {
   isOpen: boolean;
@@ -27,6 +36,7 @@ interface ShopSettings {
   allowChairDirectCheckout: boolean;
   pushRemindersLeadTime: number;
   dailyGoal: number;
+  hideFinanceFromBarbers: boolean;
 }
 
 const INITIAL_SETTINGS: ShopSettings = {
@@ -45,11 +55,13 @@ const INITIAL_SETTINGS: ShopSettings = {
   allowChairDirectCheckout: true,
   pushRemindersLeadTime: 15,
   dailyGoal: 1200000,
+  hideFinanceFromBarbers: true,
 };
 
-function settingsFromSession(): ShopSettings {
-  const shop = getSessionShop();
-  const saved = shop?.settings ?? {};
+// Convierte la barbería (DB o caché) en ajustes tipados del formulario
+function resolveSettings(shopPick?: Shop | null): ShopSettings {
+  const shop = shopPick ?? getSessionShop();
+  const saved = (shop?.settings ?? {}) as Record<string, unknown>;
   return {
     shopName: shop?.name ?? INITIAL_SETTINGS.shopName,
     nit: typeof saved.nit === 'string' ? saved.nit : INITIAL_SETTINGS.nit,
@@ -66,7 +78,21 @@ function settingsFromSession(): ShopSettings {
     allowChairDirectCheckout: typeof saved.allowChairDirectCheckout === 'boolean' ? saved.allowChairDirectCheckout : INITIAL_SETTINGS.allowChairDirectCheckout,
     pushRemindersLeadTime: typeof saved.pushRemindersLeadTime === 'number' ? saved.pushRemindersLeadTime : INITIAL_SETTINGS.pushRemindersLeadTime,
     dailyGoal: typeof saved.dailyGoal === 'number' ? saved.dailyGoal : INITIAL_SETTINGS.dailyGoal,
+    hideFinanceFromBarbers: typeof saved.hideFinanceFromBarbers === 'boolean' ? saved.hideFinanceFromBarbers : INITIAL_SETTINGS.hideFinanceFromBarbers,
   };
+}
+
+function settingsFromSession(): ShopSettings {
+  return resolveSettings(getSessionShop());
+}
+
+// Etiqueta legible del esquema de comisión de un barbero (BD)
+function commissionLabel(b: Barber): string {
+  if (b.commission_scheme === 'fixed') {
+    return `$${(b.commission_value ?? 0).toLocaleString('es-CO')} fijos`;
+  }
+  if (b.commission_scheme === 'none') return 'Sin comisión';
+  return `${b.commission_value ?? 0}%`;
 }
 
 export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
@@ -84,9 +110,39 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
     }
   }, [isOpen, initialTab]);
   const [settings, setSettings] = useState<ShopSettings>(() => settingsFromSession());
+  const [barbers, setBarbers] = useState<Barber[]>([]);
   const [isSaving, setIsSaving] = useState(false);
 
   const [hasChanges, setHasChanges] = useState(false);
+
+  // Al abrir: carga barbería y barberos DIRECTAMENTE de la base de datos (no de datos quemados)
+  React.useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    (async () => {
+      try {
+        const [freshShop, freshBarbers] = await Promise.all([apiShop.get(), apiBarbers.list()]);
+        if (!active) return;
+        setSettings(resolveSettings(freshShop));
+        setBarbers(freshBarbers);
+        const token = getToken();
+        const user = getSessionUser();
+        if (token && user) saveSession(token, user, freshShop);
+      } catch {
+        if (!active) return;
+        setSettings(settingsFromSession());
+        try {
+          const freshBarbers = await apiBarbers.list();
+          if (active) setBarbers(freshBarbers);
+        } catch {
+          // Sin sesión o sin red: se deja la lista vacía
+        }
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [isOpen]);
 
   const handleUpdate = <K extends keyof ShopSettings>(key: K, value: ShopSettings[K]) => {
     setSettings((prev) => ({ ...prev, [key]: value }));
@@ -115,6 +171,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
           allowChairDirectCheckout: settings.allowChairDirectCheckout,
           pushRemindersLeadTime: settings.pushRemindersLeadTime,
           dailyGoal: settings.dailyGoal,
+          hideFinanceFromBarbers: settings.hideFinanceFromBarbers,
         },
       });
       const token = getToken();
@@ -528,35 +585,56 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Sillas Activas */}
+                  {/* Sillas y Barberos (datos reales de la BD) */}
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-label-caps text-[11px] text-slate-500 uppercase font-bold">
-                        Sillas de Corte Registradas (4)
+                        Sillas de Corte Registradas ({barbers.length})
                       </span>
-                      <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full">
-                        Todas Operativas
-                      </span>
+                      {barbers.length > 0 && (
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            barbers.every((b) => b.active)
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}
+                        >
+                          {barbers.every((b) => b.active)
+                            ? 'Todas Operativas'
+                            : `${barbers.filter((b) => b.active).length} activas`}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="space-y-1.5 text-xs text-slate-700">
-                      <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200">
-                        <span className="font-bold">Silla 1 - Principal</span>
-                        <span className="text-slate-500">Mateo Castro (Master)</span>
+                    {barbers.length === 0 ? (
+                      <div className="text-xs text-slate-500 bg-white border border-dashed border-slate-300 rounded-lg p-3 text-center">
+                        Aún no hay barberos registrados. Se crean en "Comisiones & Liquidación" desde la base de datos.
                       </div>
-                      <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200">
-                        <span className="font-bold">Silla 2 - Degradé & Barba</span>
-                        <span className="text-slate-500">David Morales</span>
+                    ) : (
+                      <div className="space-y-1.5 text-xs text-slate-700">
+                        {barbers.map((b) => (
+                          <div
+                            key={b.id}
+                            className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200 gap-2"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span
+                                className={`w-2 h-2 rounded-full shrink-0 ${
+                                  b.active ? 'bg-emerald-500' : 'bg-slate-300'
+                                }`}
+                              />
+                              <span className="font-bold truncate">{b.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-[11px] text-slate-500">{b.chair || 'Silla no asignada'}</span>
+                              <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-md">
+                                {commissionLabel(b)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
                       </div>
-                      <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200">
-                        <span className="font-bold">Silla 3 - Clásico & Tijera</span>
-                        <span className="text-slate-500">Andrés Silva</span>
-                      </div>
-                      <div className="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-200">
-                        <span className="font-bold">Silla 4 - Libre / Rotativa</span>
-                        <span className="text-amber-600 font-semibold">Disponible</span>
-                      </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Quick Access to Team Commissions Screen */}
@@ -579,27 +657,31 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
                 <div className="space-y-4">
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
                     <span className="font-label-caps text-[11px] text-slate-500 uppercase font-bold block">
-                      Credenciales y Acceso
+                      Privacidad Financiera
                     </span>
 
                     <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
-                      <div>
-                        <div className="text-xs font-bold text-slate-900">PIN de Supervisor / Dueño</div>
-                        <div className="text-[11px] text-slate-500">Requerido para anular cobros y reabrir caja</div>
-                      </div>
-                      <div className="font-mono text-xs font-bold bg-slate-100 px-2.5 py-1 rounded border border-slate-300">
-                        •••• (4 dígitos)
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200">
-                      <div>
+                      <div className="pr-3">
                         <div className="text-xs font-bold text-slate-900">Modo Terminal Barbero</div>
-                        <div className="text-[11px] text-slate-500">Ocultar métricas financieras globales a barberos</div>
+                        <div className="text-[11px] text-slate-500">
+                          Ocultar métricas financieras globales a los barberos
+                        </div>
                       </div>
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                        Protegido
-                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={settings.hideFinanceFromBarbers}
+                        onClick={() => handleUpdate('hideFinanceFromBarbers', !settings.hideFinanceFromBarbers)}
+                        className={`w-11 h-6 flex items-center rounded-full p-1 cursor-pointer transition-colors shrink-0 ${
+                          settings.hideFinanceFromBarbers ? 'bg-amber-600' : 'bg-slate-300'
+                        }`}
+                      >
+                        <div
+                          className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                            settings.hideFinanceFromBarbers ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
                     </div>
                   </div>
 
