@@ -39,6 +39,8 @@ interface ShopSettings {
   hideFinanceFromBarbers: boolean;
   payNumber: string;
   payQr: string;
+  brebNumber: string;
+  brebQr: string;
 }
 
 const INITIAL_SETTINGS: ShopSettings = {
@@ -60,6 +62,8 @@ const INITIAL_SETTINGS: ShopSettings = {
   hideFinanceFromBarbers: true,
   payNumber: '312 456 7890',
   payQr: '',
+  brebNumber: '',
+  brebQr: '',
 };
 
 // Convierte la barbería (DB o caché) en ajustes tipados del formulario
@@ -85,6 +89,8 @@ function resolveSettings(shopPick?: Shop | null): ShopSettings {
     hideFinanceFromBarbers: typeof saved.hideFinanceFromBarbers === 'boolean' ? saved.hideFinanceFromBarbers : INITIAL_SETTINGS.hideFinanceFromBarbers,
     payNumber: typeof saved.payNumber === 'string' ? saved.payNumber : INITIAL_SETTINGS.payNumber,
     payQr: typeof saved.payQr === 'string' ? saved.payQr : '',
+    brebNumber: typeof saved.brebNumber === 'string' ? saved.brebNumber : INITIAL_SETTINGS.brebNumber,
+    brebQr: typeof saved.brebQr === 'string' ? saved.brebQr : '',
   };
 }
 
@@ -155,7 +161,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
     setHasChanges(true);
   };
 
-  const handleQrUpload = (file: File | undefined) => {
+  const handleQrUpload = (key: 'payQr' | 'brebQr', file: File | undefined) => {
     if (!file) return;
     if (file.size > 2 * 1024 * 1024) {
       if (onToast) onToast('La imagen del QR supera 2 MB. Usa una más liviana.');
@@ -163,7 +169,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
     }
     const reader = new FileReader();
     reader.onload = () => {
-      handleUpdate('payQr', String(reader.result || ''));
+      handleUpdate(key, String(reader.result || ''));
     };
     reader.readAsDataURL(file);
   };
@@ -193,6 +199,8 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
           hideFinanceFromBarbers: settings.hideFinanceFromBarbers,
           payNumber: settings.payNumber,
           payQr: settings.payQr,
+          brebNumber: settings.brebNumber,
+          brebQr: settings.brebQr,
         },
       });
       const token = getToken();
@@ -442,53 +450,109 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
               {/* TAB 2: PAYMENTS & CASH */}
               {activeTab === 'payments' && (
                 <div className="space-y-4">
-                  {/* Llave Bre-B y QR de pago */}
+                  {/* Nequi: número y QR */}
                   <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-amber-700 text-xl">key</span>
+                      <span className="material-symbols-outlined text-purple-700 text-xl">account_balance</span>
                       <div>
                         <span className="font-label-caps text-[11px] text-slate-500 uppercase font-bold block">
-                          Llave Bre-B y Datos de Pago
+                          Nequi
                         </span>
                         <span className="text-[11px] text-slate-400">
-                          Aparecen en la silla del barbero al cobrar por Nequi o Llave Bre-B
+                          Número y QR que ve el barbero al cobrar por Nequi
                         </span>
                       </div>
                     </div>
 
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Número o llave para pagos (Bre-B / Nequi)
+                        Número Nequi
                       </label>
                       <input
                         type="text"
                         value={settings.payNumber}
                         onChange={(e) => handleUpdate('payNumber', e.target.value)}
                         placeholder="+57 312 000 0000"
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono focus:outline-none focus:border-amber-500"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono focus:outline-none focus:border-purple-500"
                       />
                     </div>
 
                     <div>
                       <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        QR de pago (imagen)
+                        QR Nequi (imagen)
                       </label>
                       <input
                         type="file"
                         accept="image/*"
-                        onChange={(e) => handleQrUpload(e.target.files?.[0])}
-                        className="w-full text-[11px] text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-800 file:font-bold file:cursor-pointer file:hover:bg-amber-200 cursor-pointer"
+                        onChange={(e) => handleQrUpload('payQr', e.target.files?.[0])}
+                        className="w-full text-[11px] text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-purple-100 file:text-purple-800 file:font-bold file:cursor-pointer file:hover:bg-purple-200 cursor-pointer"
                       />
                       {settings.payQr && (
                         <div className="mt-2 flex items-center gap-2">
                           <img
                             src={settings.payQr}
-                            alt="QR de pago"
+                            alt="QR Nequi"
                             className="w-14 h-14 rounded-lg border border-slate-300 bg-white object-contain"
                           />
                           <button
                             type="button"
                             onClick={() => handleUpdate('payQr', '')}
+                            className="text-[11px] text-rose-600 font-semibold hover:text-rose-700 cursor-pointer"
+                          >
+                            Quitar QR
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Llave Bre-B: número/llave y QR */}
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-blue-700 text-xl">key</span>
+                      <div>
+                        <span className="font-label-caps text-[11px] text-slate-500 uppercase font-bold block">
+                          Llave Bre-B
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          Llave y QR que ve el barbero al cobrar con Bre-B
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Número o llave Bre-B
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.brebNumber}
+                        onChange={(e) => handleUpdate('brebNumber', e.target.value)}
+                        placeholder="+57 310 000 0000"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        QR Bre-B (imagen)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleQrUpload('brebQr', e.target.files?.[0])}
+                        className="w-full text-[11px] text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-blue-100 file:text-blue-800 file:font-bold file:cursor-pointer file:hover:bg-blue-200 cursor-pointer"
+                      />
+                      {settings.brebQr && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <img
+                            src={settings.brebQr}
+                            alt="QR Bre-B"
+                            className="w-14 h-14 rounded-lg border border-slate-300 bg-white object-contain"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdate('brebQr', '')}
                             className="text-[11px] text-rose-600 font-semibold hover:text-rose-700 cursor-pointer"
                           >
                             Quitar QR

@@ -32,13 +32,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
     setIsSubmitting(true);
     try {
       const { user } = await api.login(username.trim(), password);
+
+      // Validación por puesto seleccionado:
+      // - Sección Dueño/Admin: solo cuentas de dueño.
+      // - Sección Barbero: solo cuentas de barbero. Un dueño entra SOLO si está
+      //   registrado como barbero en la barbería (barber_id asignado).
+      if (role === 'owner' && user.role === 'barber') {
+        setError(
+          'Este usuario no aparece registrado como Dueño / Administrador. Verifica las credenciales o regístrate si eres un dueño nuevo.',
+        );
+        return;
+      }
+      if (role === 'barber' && user.role === 'owner' && !user.barberId) {
+        setError(
+          'Tu cuenta de Dueño no está registrada como barbero. Vincúlela desde el panel de administración (sección Equipo) para entrar a la agenda de cortes.',
+        );
+        return;
+      }
+
       try {
-        localStorage.setItem('barberos_user_role', user.role);
+        localStorage.setItem('barberos_user_role', role);
       } catch {
         // Ignore
       }
-      if (onRoleSelect) onRoleSelect(user.role);
-      if (user.role === 'owner') {
+      if (onRoleSelect) onRoleSelect(role);
+      if (role === 'owner') {
         onNavigate('owner_dashboard', 'push');
       } else {
         onNavigate('barber_terminal', 'push');

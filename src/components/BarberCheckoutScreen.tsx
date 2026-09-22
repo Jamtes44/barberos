@@ -147,6 +147,12 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
   const [payQr, setPayQr] = useState<string>(
     typeof sessionShop?.settings?.payQr === 'string' ? sessionShop.settings.payQr : '',
   );
+  const [brebNumber, setBrebNumber] = useState<string>(
+    typeof sessionShop?.settings?.brebNumber === 'string' ? sessionShop.settings.brebNumber : '',
+  );
+  const [brebQr, setBrebQr] = useState<string>(
+    typeof sessionShop?.settings?.brebQr === 'string' ? sessionShop.settings.brebQr : '',
+  );
 
   // Success state
   const [completedSale, setCompletedSale] = useState<BarberCompletedSale | null>(null);
@@ -171,6 +177,8 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
       const shopSettings = (shop.settings ?? {}) as Record<string, unknown>;
       if (typeof shopSettings.payNumber === 'string') setPayNumber(shopSettings.payNumber);
       if (typeof shopSettings.payQr === 'string') setPayQr(shopSettings.payQr);
+      if (typeof shopSettings.brebNumber === 'string') setBrebNumber(shopSettings.brebNumber);
+      if (typeof shopSettings.brebQr === 'string') setBrebQr(shopSettings.brebQr);
       const activeBarbers = barb.filter((b) => b.active);
       const svcItems: ServiceItem[] = svc
         .filter((s) => s.active)
@@ -974,7 +982,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                     <div>
                       <span className="font-bold text-blue-950 block">Llave Bre-B</span>
                       <span className="text-[11px] text-blue-700">
-                        {payNumber || '— sin llave configurada'}
+                        {brebNumber || '— sin llave configurada'}
                       </span>
                     </div>
                     <button
@@ -1247,10 +1255,10 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                 <p className="text-xs text-slate-500">Muestra este código al cliente en tu silla</p>
               </div>
 
-              {payQr ? (
+              {(paymentMethod === 'tarjeta' ? brebQr : payQr) ? (
                 <img
-                  src={payQr}
-                  alt="QR de pago"
+                  src={paymentMethod === 'tarjeta' ? brebQr : payQr}
+                  alt={paymentMethod === 'tarjeta' ? 'QR Bre-B' : 'QR Nequi'}
                   className="w-48 h-48 rounded-2xl border-2 border-slate-200 object-contain bg-white p-2"
                 />
               ) : (
@@ -1281,7 +1289,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                   {paymentMethod === 'tarjeta' ? 'Llave Bre-B:' : 'Número de cuenta:'}
                 </span>
                 <span className="font-bold text-sm text-slate-900 font-mono tracking-wider">
-                  {payNumber || 'Sin configurar'}
+                  {(paymentMethod === 'tarjeta' ? brebNumber : payNumber) || 'Sin configurar'}
                 </span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">{barberDisplayName} · {chairDisplay}</span>
               </div>
