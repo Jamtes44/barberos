@@ -24,7 +24,7 @@ const fmtCopCOP = (n: number) => `${fmtCop(n)} COP`;
 const METHOD_LABEL: Record<string, string> = {
   efectivo: 'Efectivo',
   nequi: 'Nequi/Davi',
-  tarjeta: 'Tarjeta',
+  tarjeta: 'Llave Bre-B',
   caja_central: 'Caja Central',
 };
 

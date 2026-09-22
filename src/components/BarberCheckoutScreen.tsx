@@ -9,6 +9,7 @@ import {
   apiServices,
   apiBarbers,
   apiSales,
+  apiShop,
   Appointment,
   Barber,
   Sale,
@@ -56,7 +57,7 @@ const fmtTime = (iso: string | null) =>
 const PAYMENT_LABEL: Record<string, string> = {
   efectivo: 'Efectivo',
   nequi: 'Nequi',
-  tarjeta: 'Tarjeta',
+  tarjeta: 'Llave Bre-B',
   caja_central: 'Caja Central',
 };
 
@@ -138,6 +139,15 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
   const [customReceivedCash, setCustomReceivedCash] = useState<string>('');
   const [showNequiQrModal, setShowNequiQrModal] = useState(false);
 
+  // Datos de pago configurados por el admin (llave Bre-B / Nequi y QR)
+  const sessionShop = getSessionShop();
+  const [payNumber, setPayNumber] = useState<string>(
+    typeof sessionShop?.settings?.payNumber === 'string' ? sessionShop.settings.payNumber : '312 456 7890',
+  );
+  const [payQr, setPayQr] = useState<string>(
+    typeof sessionShop?.settings?.payQr === 'string' ? sessionShop.settings.payQr : '',
+  );
+
   // Success state
   const [completedSale, setCompletedSale] = useState<BarberCompletedSale | null>(null);
   const [salesHistory, setSalesHistory] = useState<BarberCompletedSale[]>([]);
@@ -151,12 +161,16 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
   const load = useCallback(async () => {
     const u = getSessionUser();
     try {
-      const [svc, barb, apts, sales] = await Promise.all([
+      const [svc, barb, apts, sales, shop] = await Promise.all([
         apiServices.list(),
         apiBarbers.list(),
         apiAppointments.list({ from: today, to: today, barberId: u?.barberId ?? undefined }),
         apiSales.list({ from: today, to: today, barberId: u?.barberId ?? undefined }),
+        apiShop.get(),
       ]);
+      const shopSettings = (shop.settings ?? {}) as Record<string, unknown>;
+      if (typeof shopSettings.payNumber === 'string') setPayNumber(shopSettings.payNumber);
+      if (typeof shopSettings.payQr === 'string') setPayQr(shopSettings.payQr);
       const activeBarbers = barb.filter((b) => b.active);
       const svcItems: ServiceItem[] = svc
         .filter((s) => s.active)
@@ -871,8 +885,8 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                         : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    <span className="material-symbols-outlined text-[18px]">contactless</span>
-                    <span className="font-bold text-[10px]">Tarjeta</span>
+                    <span className="material-symbols-outlined text-[18px]">key</span>
+                    <span className="font-bold text-[10px]">Llave Bre-B</span>
                   </button>
                 </div>
 
@@ -939,8 +953,10 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                 {paymentMethod === 'nequi' && (
                   <div className="p-2.5 rounded-xl bg-purple-50 border border-purple-200 flex items-center justify-between text-xs">
                     <div>
-                      <span className="font-bold text-purple-950 block">QR Nequi de {chairDisplay}</span>
-                      <span className="text-[11px] text-purple-700">312 456 7890 ({barberDisplayName})</span>
+                      <span className="font-bold text-purple-950 block">Pago Nequi</span>
+                      <span className="text-[11px] text-purple-700">
+                        {payNumber} {payNumber ? `(${barberDisplayName})` : '— sin llave configurada'}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -948,7 +964,26 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
                       className="py-1 px-2.5 rounded-lg bg-[#20003c] text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-[16px]">qr_code</span>
-                      <span>Ver Código QR</span>
+                      <span>Ver QR</span>
+                    </button>
+                  </div>
+                )}
+
+                {paymentMethod === 'tarjeta' && (
+                  <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-bold text-blue-950 block">Llave Bre-B</span>
+                      <span className="text-[11px] text-blue-700">
+                        {payNumber || '— sin llave configurada'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowNequiQrModal(true)}
+                      className="py-1 px-2.5 rounded-lg bg-blue-600 text-white font-bold text-xs flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">qr_code</span>
+                      <span>Ver QR</span>
                     </button>
                   </div>
                 )}
@@ -1188,7 +1223,7 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
         )}
       </AnimatePresence>
 
-      {/* NEQUI QR POPUP MODAL */}
+      {/* CODIGO QR POPUP MODAL (Nequi / Llave Bre-B) */}
       <AnimatePresence>
         {showNequiQrModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-xs select-none">
@@ -1198,38 +1233,56 @@ export const BarberCheckoutScreen: React.FC<BarberCheckoutScreenProps> = ({ onNa
               exit={{ opacity: 0, scale: 0.9 }}
               className="w-full max-w-xs bg-white rounded-3xl shadow-2xl border border-slate-200 p-5 flex flex-col items-center text-center gap-3 text-slate-800"
             >
-              <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-900">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  paymentMethod === 'tarjeta' ? 'bg-blue-100 text-blue-900' : 'bg-purple-100 text-purple-900'
+                }`}
+              >
                 <span className="material-symbols-outlined text-2xl">qr_code_scanner</span>
               </div>
               <div>
-                <h4 className="font-bold text-base text-slate-900">Código QR Nequi</h4>
+                <h4 className="font-bold text-base text-slate-900">
+                  {paymentMethod === 'tarjeta' ? 'Código QR Llave Bre-B' : 'Código QR Nequi'}
+                </h4>
                 <p className="text-xs text-slate-500">Muestra este código al cliente en tu silla</p>
               </div>
 
-              {/* High fidelity QR mock */}
-              <div className="p-3 bg-white border-2 border-purple-900 rounded-2xl shadow-inner">
-                <div className="w-44 h-44 bg-slate-950 rounded-xl p-2 flex items-center justify-center relative">
-                  <div className="w-full h-full bg-white rounded-lg p-2 flex flex-col justify-between">
-                    <div className="flex justify-between">
-                      <div className="w-8 h-8 bg-black rounded-xs" />
-                      <div className="w-8 h-8 bg-black rounded-xs" />
-                    </div>
-                    <div className="flex items-center justify-center">
-                      <span className="px-2 py-0.5 rounded bg-purple-900 text-white font-black text-[10px]">
-                        NEQUI
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <div className="w-8 h-8 bg-black rounded-xs" />
-                      <div className="w-6 h-6 bg-purple-600 rounded-xs" />
+              {payQr ? (
+                <img
+                  src={payQr}
+                  alt="QR de pago"
+                  className="w-48 h-48 rounded-2xl border-2 border-slate-200 object-contain bg-white p-2"
+                />
+              ) : (
+                /* QR mock (sin imagen configurada aún) */
+                <div className="p-3 bg-white border-2 border-slate-900 rounded-2xl shadow-inner">
+                  <div className="w-44 h-44 bg-slate-950 rounded-xl p-2 flex items-center justify-center relative">
+                    <div className="w-full h-full bg-white rounded-lg p-2 flex flex-col justify-between">
+                      <div className="flex justify-between">
+                        <div className="w-8 h-8 bg-black rounded-xs" />
+                        <div className="w-8 h-8 bg-black rounded-xs" />
+                      </div>
+                      <div className="flex items-center justify-center">
+                        <span className="px-2 py-0.5 rounded bg-slate-900 text-white font-black text-[10px]">
+                          {paymentMethod === 'tarjeta' ? 'BRE-B' : 'NEQUI'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <div className="w-8 h-8 bg-black rounded-xs" />
+                        <div className="w-6 h-6 bg-slate-600 rounded-xs" />
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               <div className="text-xs">
-                <span className="text-slate-500 block">Número de cuenta:</span>
-                <span className="font-bold text-sm text-purple-950 font-mono tracking-wider">312 456 7890</span>
+                <span className="text-slate-500 block">
+                  {paymentMethod === 'tarjeta' ? 'Llave Bre-B:' : 'Número de cuenta:'}
+                </span>
+                <span className="font-bold text-sm text-slate-900 font-mono tracking-wider">
+                  {payNumber || 'Sin configurar'}
+                </span>
                 <span className="text-[11px] text-slate-400 block mt-0.5">{barberDisplayName} · {chairDisplay}</span>
               </div>
 

@@ -314,7 +314,7 @@ export const OwnerDashboardScreen: React.FC<OwnerDashboardScreenProps> = ({ onNa
                         <div className="flex flex-col items-end shrink-0 pl-2">
                           <span className="font-headline-md text-lg text-[#0f172a] font-bold">{fmtCop(s.total)}</span>
                           <div className="flex items-center gap-1 text-[#006c49] font-label-md text-xs font-semibold">
-                            <span>{s.payment_method}</span>
+                            <span>{s.payment_method === 'tarjeta' ? 'Llave Bre-B' : s.payment_method}</span>
                             <span className="material-symbols-outlined text-[14px]">check_circle</span>
                           </div>
                         </div>

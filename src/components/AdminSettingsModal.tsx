@@ -37,6 +37,8 @@ interface ShopSettings {
   pushRemindersLeadTime: number;
   dailyGoal: number;
   hideFinanceFromBarbers: boolean;
+  payNumber: string;
+  payQr: string;
 }
 
 const INITIAL_SETTINGS: ShopSettings = {
@@ -56,6 +58,8 @@ const INITIAL_SETTINGS: ShopSettings = {
   pushRemindersLeadTime: 15,
   dailyGoal: 1200000,
   hideFinanceFromBarbers: true,
+  payNumber: '312 456 7890',
+  payQr: '',
 };
 
 // Convierte la barbería (DB o caché) en ajustes tipados del formulario
@@ -79,6 +83,8 @@ function resolveSettings(shopPick?: Shop | null): ShopSettings {
     pushRemindersLeadTime: typeof saved.pushRemindersLeadTime === 'number' ? saved.pushRemindersLeadTime : INITIAL_SETTINGS.pushRemindersLeadTime,
     dailyGoal: typeof saved.dailyGoal === 'number' ? saved.dailyGoal : INITIAL_SETTINGS.dailyGoal,
     hideFinanceFromBarbers: typeof saved.hideFinanceFromBarbers === 'boolean' ? saved.hideFinanceFromBarbers : INITIAL_SETTINGS.hideFinanceFromBarbers,
+    payNumber: typeof saved.payNumber === 'string' ? saved.payNumber : INITIAL_SETTINGS.payNumber,
+    payQr: typeof saved.payQr === 'string' ? saved.payQr : '',
   };
 }
 
@@ -149,6 +155,19 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
     setHasChanges(true);
   };
 
+  const handleQrUpload = (file: File | undefined) => {
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      if (onToast) onToast('La imagen del QR supera 2 MB. Usa una más liviana.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      handleUpdate('payQr', String(reader.result || ''));
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -172,6 +191,8 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
           pushRemindersLeadTime: settings.pushRemindersLeadTime,
           dailyGoal: settings.dailyGoal,
           hideFinanceFromBarbers: settings.hideFinanceFromBarbers,
+          payNumber: settings.payNumber,
+          payQr: settings.payQr,
         },
       });
       const token = getToken();
@@ -421,6 +442,62 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
               {/* TAB 2: PAYMENTS & CASH */}
               {activeTab === 'payments' && (
                 <div className="space-y-4">
+                  {/* Llave Bre-B y QR de pago */}
+                  <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-amber-700 text-xl">key</span>
+                      <div>
+                        <span className="font-label-caps text-[11px] text-slate-500 uppercase font-bold block">
+                          Llave Bre-B y Datos de Pago
+                        </span>
+                        <span className="text-[11px] text-slate-400">
+                          Aparecen en la silla del barbero al cobrar por Nequi o Llave Bre-B
+                        </span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        Número o llave para pagos (Bre-B / Nequi)
+                      </label>
+                      <input
+                        type="text"
+                        value={settings.payNumber}
+                        onChange={(e) => handleUpdate('payNumber', e.target.value)}
+                        placeholder="+57 312 000 0000"
+                        className="w-full px-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg text-slate-800 font-mono focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        QR de pago (imagen)
+                      </label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleQrUpload(e.target.files?.[0])}
+                        className="w-full text-[11px] text-slate-600 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:bg-amber-100 file:text-amber-800 file:font-bold file:cursor-pointer file:hover:bg-amber-200 cursor-pointer"
+                      />
+                      {settings.payQr && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <img
+                            src={settings.payQr}
+                            alt="QR de pago"
+                            className="w-14 h-14 rounded-lg border border-slate-300 bg-white object-contain"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleUpdate('payQr', '')}
+                            className="text-[11px] text-rose-600 font-semibold hover:text-rose-700 cursor-pointer"
+                          >
+                            Quitar QR
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Wompi Integration */}
                   <div className="p-3.5 bg-amber-50/60 rounded-xl border border-amber-200/80">
                     <div className="flex items-center justify-between mb-2">
@@ -445,7 +522,7 @@ export const AdminSettingsModal: React.FC<AdminSettingsModalProps> = ({
                       </button>
                     </div>
                     <p className="text-[11px] text-slate-600 mb-2 leading-relaxed">
-                      Permite cobro con QR Bancolombia, Nequi y tarjetas directo desde el terminal o la silla.
+                      Permite cobro con QR Bancolombia, Nequi y Llave Bre-B directo desde el terminal o la silla.
                     </p>
                     {settings.wompiIntegration && (
                       <div className="mt-2 pt-2 border-t border-amber-200/60">

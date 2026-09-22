@@ -33,7 +33,7 @@ const fmtFullDate = (iso: string): string =>
 const money = (n: number): string => `$${Math.round(n).toLocaleString('es-CO')}`;
 
 const paymentLabel = (m: string): string =>
-  m === 'efectivo' ? 'Efectivo' : m === 'nequi' ? 'Nequi' : m === 'tarjeta' ? 'Tarjeta' : m || '—';
+  m === 'efectivo' ? 'Efectivo' : m === 'nequi' ? 'Nequi' : m === 'tarjeta' ? 'Llave Bre-B' : m || '—';
 
 const statusLabel = (s: string | null | undefined): string =>
   s === 'completado'

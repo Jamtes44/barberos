@@ -38,7 +38,7 @@ const clearPendingTurn = () => {
 const METHOD_LABEL: Record<string, { label: string; color: string; badge: string }> = {
   efectivo: { label: 'Efectivo', color: 'text-emerald-700', badge: 'bg-emerald-100 text-[#006c49]' },
   nequi: { label: 'Nequi/Davi', color: 'text-[#de1484]', badge: 'bg-pink-100 text-[#de1484]' },
-  tarjeta: { label: 'Tarjeta', color: 'text-blue-700', badge: 'bg-blue-100 text-blue-700' },
+  tarjeta: { label: 'Llave Bre-B', color: 'text-blue-700', badge: 'bg-blue-100 text-blue-700' },
   caja_central: { label: 'Caja Central', color: 'text-slate-600', badge: 'bg-slate-100 text-slate-600' },
 };
 
@@ -520,7 +520,7 @@ export const SalesCashScreen: React.FC<SalesCashScreenProps> = ({ onNavigate, on
                       : 'bg-slate-50 text-slate-700 border border-slate-200'
                   }`}
                 >
-                  💳 Tarjeta
+                  🔑 Llave Bre-B
                 </button>
               </div>
             </div>
@@ -559,7 +559,7 @@ export const SalesCashScreen: React.FC<SalesCashScreenProps> = ({ onNavigate, on
                     <div key={s.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50">
                       <div className="flex items-center gap-2">
                         <div className={`w-8 h-8 rounded-full ${meta.badge} flex items-center justify-center font-bold text-xs`}>
-                          {s.payment_method === 'efectivo' ? '$' : s.payment_method === 'nequi' ? 'N' : '💳'}
+                          {s.payment_method === 'efectivo' ? '$' : s.payment_method === 'nequi' ? 'N' : '🔑'}
                         </div>
                         <div>
                           <span className="font-label-lg text-xs font-bold text-[#0f172a] block">
