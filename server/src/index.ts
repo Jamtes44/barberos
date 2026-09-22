@@ -9,12 +9,14 @@ import { apiLimiter, authLimiter, registerLimiter } from './middleware/rateLimit
 
 import authRoutes from './routes/auth.js';
 import shopRoutes from './routes/shops.js';
+import membershipRoutes from './routes/membership.js';
 import serviceRoutes from './routes/services.js';
 import barberRoutes from './routes/barbers.js';
 import clientRoutes from './routes/clients.js';
 import appointmentRoutes from './routes/appointments.js';
 import saleRoutes from './routes/sales.js';
 import reportRoutes from './routes/reports.js';
+import { startMembershipScheduler } from './membership.js';
 
 const app = express();
 
@@ -81,7 +83,15 @@ app.use(
   }),
 );
 
-app.use(express.json({ limit: '1mb' }));
+app.use(
+  express.json({
+    limit: '1mb',
+    // Se guarda el body crudo para poder verificar la firma de los webhooks de Wompi.
+    verify: (req: express.Request, _res: express.Response, buf: Buffer) => {
+      (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+    },
+  }),
+);
 
 const startedAt = Date.now();
 
@@ -104,6 +114,7 @@ app.get('/api/health', async (_req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/shop', shopRoutes);
+app.use('/api/membership', membershipRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/barbers', barberRoutes);
 app.use('/api/clients', clientRoutes);
@@ -176,6 +187,8 @@ async function main() {
   app.listen(config.port, () => {
     console.log(`[barberos-api] escuchando en http://localhost:${config.port}`);
   });
+  // Recordatorios + bloqueos de membresía (prueba gratis 7 días, cobro $35.900)
+  startMembershipScheduler();
 }
 
 main();

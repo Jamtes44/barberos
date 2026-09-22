@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { query, queryOne, salesSummary, localToday } from '../db.js';
 import { AppError, asyncHandler, requireFields } from '../util.js';
 import { requireAuth } from '../middleware/auth.js';
+import { requireMemberActive } from '../membership.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requireMemberActive);
 
 const METHODS = ['efectivo', 'nequi', 'tarjeta', 'caja_central'];
 

@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { query, localToday } from '../db.js';
 import { asyncHandler } from '../util.js';
 import { requireAuth } from '../middleware/auth.js';
+import { requireMemberActive } from '../membership.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requireMemberActive);
 
 /** GET /api/reports/kpis?date= — KPIs del día (dashboard dueño) */
 router.get(

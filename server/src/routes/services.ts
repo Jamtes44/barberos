@@ -2,9 +2,11 @@ import { Router } from 'express';
 import { query, queryOne } from '../db.js';
 import { AppError, asyncHandler, requireFields } from '../util.js';
 import { requireAuth, requireOwner } from '../middleware/auth.js';
+import { requireMemberActive } from '../membership.js';
 
 const router = Router();
 router.use(requireAuth);
+router.use(requireMemberActive);
 
 /** GET /api/services — lista de servicios de la barbería */
 router.get(

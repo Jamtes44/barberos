@@ -40,10 +40,28 @@ export const config = {
   jwtExpiresSeconds: expiresSeconds(String(jwtExpiresIn)),
   sessionCookieName: 'barberos_session',
   googleGeminiApiKey: process.env.GEMINI_API_KEY || null,
-  allowedOrigins: (process.env.CORS_ORIGIN || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean),
+allowedOrigins: (process.env.CORS_ORIGIN || '')
+.split(',')
+.map((s) => s.trim())
+.filter(Boolean),
+// Pasarela Wompi (miembros de la barbería). Sin estas llaves el cobro queda
+// "no configurado": el frontend lo informa y se puede probar con TEST_PAYMENT_SECRET.
+wompi: {
+env: (process.env.WOMPI_ENV || 'sandbox') as 'sandbox' | 'production',
+publicKey: process.env.WOMPI_PUBLIC_KEY || null,
+privateKey: process.env.WOMPI_PRIVATE_KEY || null,
+eventsSecret: process.env.WOMPI_EVENTS_KEY || null,
+},
+// Recordatorios de membresía por WhatsApp (Meta Cloud API o gateway)
+whatsapp: {
+provider: (process.env.WHATSAPP_PROVIDER || '') as 'meta' | 'gateway' | '',
+token: process.env.WHATSAPP_TOKEN || null,
+phoneId: process.env.WHATSAPP_PHONE_ID || null,
+apiUrl: process.env.WHATSAPP_API_URL || null,
+authToken: process.env.WHATSAPP_AUTH_TOKEN || null,
+},
+appBaseUrl: process.env.APP_BASE_URL || '',
+testPaymentSecret: process.env.TEST_PAYMENT_SECRET || null,
   trustProxy: process.env.TRUST_PROXY !== undefined ? process.env.TRUST_PROXY === 'true' : isProduction,
   dbSsl:
     process.env.PGSSL === '0'

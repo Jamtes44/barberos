@@ -27,6 +27,44 @@ CREATE TABLE IF NOT EXISTS users (
   created_at    timestamptz NOT NULL DEFAULT now()
 );
 
+-- ============ Membresía (plan de las barberías) ============
+-- Ciclo: prueba gratis 7 días -> a partir del día 3 recordatorios diarios ->
+-- en el día 7 se verifica el pago: pagó -> 'active' 30 días más; si no -> 'blocked'.
+-- estados: trial | active | blocked
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS membership_status      text NOT NULL DEFAULT 'trial';
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS trial_started_at       timestamptz;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS trial_ends_at          timestamptz;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS membership_activated_at timestamptz;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS membership_expires_at  timestamptz;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_id                text;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_name              text;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS plan_price             numeric NOT NULL DEFAULT 35900;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS last_payment_at        timestamptz;
+ALTER TABLE shops ADD COLUMN IF NOT EXISTS last_reminder_at       timestamptz;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'shops_membership_status_check') THEN
+    ALTER TABLE shops ADD CONSTRAINT shops_membership_status_check
+      CHECK (membership_status IN ('trial', 'active', 'blocked'));
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_shops_membership_status ON shops(membership_status);
+CREATE INDEX IF NOT EXISTS idx_shops_membership_expires ON shops(membership_expires_at);
+
+-- Bitácora de recordatorios de membresía (evita duplicados y sirve de auditoría)
+CREATE TABLE IF NOT EXISTS membership_reminders (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  shop_id     uuid NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
+  shop_name   text,
+  owner_phone text,
+  owner_email text,
+  type        text NOT NULL DEFAULT 'trial_reminder',
+  sent_at     timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_membership_reminders_shop ON membership_reminders(shop_id, sent_at);
+
 -- ============ Barberos ============
 CREATE TABLE IF NOT EXISTS barbers (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),

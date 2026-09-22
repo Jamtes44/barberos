@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { query, queryOne } from '../db.js';
 import { AppError, asyncHandler, requireFields } from '../util.js';
 import { requireAuth, requireOwner } from '../middleware/auth.js';
+import { requireMemberActive } from '../membership.js';
 
 const COMMISSION_SCHEMES = ['percentage', 'fixed', 'none'];
 

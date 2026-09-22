@@ -193,6 +193,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!res.ok) {
     const message = (body as { error?: string })?.error || res.statusText;
     if (res.status === 401) clearSession();
+    if (res.status === 402) {
+      // Membresía vencida: el App escucha este evento y bloquea el acceso.
+      window.dispatchEvent(new CustomEvent('barberos:membership-blocked'));
+    }
     throw new ApiError(res.status, message);
   }
   return body as T;
@@ -247,6 +251,51 @@ export const apiShop = {
   get: () => request<Shop>('/shop'),
   update: (data: Partial<Pick<Shop, 'name' | 'address' | 'phone' | 'settings'>>) =>
     request<Shop>('/shop', json('PUT', data)),
+};
+
+// ---------- Membresía ----------
+
+export interface Membership {
+  status: 'trial' | 'active' | 'blocked';
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  trialDays: number;
+  reminderFromDay: number;
+  daysLeft: number;
+  daysSinceStart: number;
+  remindersActive: boolean;
+  activeUntil: string | null;
+  price: number;
+  planId: string;
+  planName: string;
+  lastPaymentAt: string | null;
+  blocked: boolean;
+  wompiConfigured: boolean;
+  testPayAvailable: boolean;
+}
+
+export interface MembershipCheckout {
+  reference: string;
+  amount: number;
+  currency: string;
+  email?: string;
+  wompi: {
+    env: 'sandbox' | 'production';
+    publicKey: string;
+    currency: 'COP';
+    amountInCents: number;
+    reference: string;
+    acceptanceToken: string | null;
+    redirectUrl: string;
+  };
+}
+
+export const apiMembership = {
+  get: () => request<Membership>('/membership'),
+  trial: () => request<Membership>('/membership/trial', json('POST', {})),
+  checkout: () => request<MembershipCheckout>('/membership/checkout', json('POST', {})),
+  testPay: (secret: string) =>
+    request<Membership>('/membership/test-pay', json('POST', { secret })),
 };
 
 // ---------- Services ----------

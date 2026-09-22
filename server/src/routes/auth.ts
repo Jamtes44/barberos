@@ -12,6 +12,7 @@ import {
   setSessionCookie,
   clearSessionCookie,
 } from '../middleware/auth.js';
+import { startTrial } from '../membership.js';
 
 const router = Router();
 
@@ -63,6 +64,9 @@ router.post(
       );
       await client.query('UPDATE shops SET owner_id = $1 WHERE id = $2', [userRows[0].id, shopId]);
       await client.query('COMMIT');
+
+      // Prueba gratis: 7 días desde el registro
+      await startTrial(shopId);
 
       const token = signToken(userRows[0].id as string, 0);
       setSessionCookie(res, token);

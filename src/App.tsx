@@ -33,6 +33,7 @@ const AUTHENTICATED_SCREENS: ScreenId[] = [
   'clients_history',
   'reports_finance',
   'barbers_commissions',
+  'wompi_plan',
 ];
 
 // Pantallas exclusivas de administración: un barbero jamás las alcanza.
@@ -76,6 +77,18 @@ export default function App() {
     setCurrentScreen(user.role === 'owner' ? 'owner_dashboard' : 'barber_terminal');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Membresía vencida (402 en cualquier llamada): el dueño va a la pantalla de pago.
+  useEffect(() => {
+    const onBlocked = () => {
+      if (userRole !== 'owner') return;
+      setCurrentScreen('wompi_plan');
+      setTransition('none');
+      setHistory((prev) => [...prev, 'wompi_plan']);
+    };
+    window.addEventListener('barberos:membership-blocked', onBlocked);
+    return () => window.removeEventListener('barberos:membership-blocked', onBlocked);
+  }, [userRole]);
 
   const navigate = (screen: ScreenId, trans: TransitionType = 'none', trackHistory = true) => {
     if (screen === 'login' && isLoggedIn) {
