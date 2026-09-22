@@ -50,6 +50,13 @@ BEGIN
   END IF;
 END $$;
 
+-- Dueños registrados antes de las membresías: se les da la prueba de 7 días
+-- vigente desde su primer arranque con este código (backfill idempotente).
+UPDATE shops SET
+  trial_started_at = COALESCE(trial_started_at, now()),
+  trial_ends_at    = COALESCE(trial_ends_at, now() + make_interval(days => 7))
+WHERE trial_started_at IS NULL AND membership_status = 'trial';
+
 CREATE INDEX IF NOT EXISTS idx_shops_membership_status ON shops(membership_status);
 CREATE INDEX IF NOT EXISTS idx_shops_membership_expires ON shops(membership_expires_at);
 

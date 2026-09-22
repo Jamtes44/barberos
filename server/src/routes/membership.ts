@@ -12,6 +12,45 @@ import {
 } from '../membership.js';
 
 const router = Router();
+
+/**
+ * POST /api/membership/webhook — evento de Wompi (transaction.updated APPROVED).
+ * Sin autenticación (Wompi no envía token): se valida la firma con el body crudo.
+ */
+router.post(
+  '/webhook',
+  asyncHandler(async (req, res) => {
+    const raw = (req as unknown as { rawBody?: Buffer }).rawBody;
+    const body = (req.body ?? {}) as {
+      event?: string;
+      signature?: { properties?: string[]; checksum?: string };
+      data?: { transaction?: { status?: string } };
+      data_transaction?: { reference?: string; status?: string };
+    };
+    const event = body.event ?? '';
+    const transaction = body.data?.transaction ?? {};
+
+    if (event !== 'transaction.updated' || transaction.status !== 'APPROVED') {
+      return res.status(200).json({ ok: true, ignored: true });
+    }
+
+    if (!verifyWompiSignature(raw ? raw.toString('utf8') : JSON.stringify(body), body.signature)) {
+      throw new AppError(401, 'Firma de evento Wompi inválida');
+    }
+
+    // La referencia del cobro es "ref-<shopId>" (Wompi la envía en data_transaction).
+    const reference = body.data_transaction?.reference ?? '';
+    if (!reference.startsWith('ref-')) {
+      console.warn('[membership] webhook sin referencia reconocible, se ignora');
+      return res.status(200).json({ ok: true, ignored: true });
+    }
+    const shopId = reference.slice('ref-'.length);
+    await activateMembership(shopId);
+    console.log(`[membership] pago aprobado -> membresía activa (${shopId})`);
+    res.status(200).json({ ok: true });
+  }),
+);
+
 router.use(requireAuth, requireShop);
 
 /** GET /api/membership — estado actual de la membresía de la barbería */
@@ -49,44 +88,6 @@ router.post(
       );
     }
     res.json(checkout);
-  }),
-);
-
-/**
- * POST /api/membership/webhook — evento de Wompi (transaction.updated APPROVED).
- * Sin autenticación: Wompi firma cada evento; la firma se valida contra el body crudo.
- */
-router.post(
-  '/webhook',
-  asyncHandler(async (req, res) => {
-    const raw = (req as unknown as { rawBody?: Buffer }).rawBody;
-    const body = (req.body ?? {}) as {
-      event?: string;
-      signature?: { properties?: string[]; checksum?: string };
-      data?: { transaction?: { status?: string } };
-      data_transaction?: { reference?: string; status?: string };
-    };
-    const event = body.event ?? '';
-    const transaction = body.data?.transaction ?? {};
-
-    if (event !== 'transaction.updated' || transaction.status !== 'APPROVED') {
-      return res.status(200).json({ ok: true, ignored: true });
-    }
-
-    if (!verifyWompiSignature(raw ? raw.toString('utf8') : JSON.stringify(body), body.signature)) {
-      throw new AppError(401, 'Firma de evento Wompi inválida');
-    }
-
-    // La referencia del cobro es "ref-<shopId>" (Wompi la envía en data_transaction).
-    const reference = body.data_transaction?.reference ?? '';
-    if (!reference.startsWith('ref-')) {
-      console.warn('[membership] webhook sin referencia reconocible, se ignora');
-      return res.status(200).json({ ok: true, ignored: true });
-    }
-    const shopId = reference.slice('ref-'.length);
-    await activateMembership(shopId);
-    console.log(`[membership] pago aprobado -> membresía activa (${shopId})`);
-    res.status(200).json({ ok: true });
   }),
 );
 

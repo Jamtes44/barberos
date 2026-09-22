@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ScreenId, TransitionType } from './types';
-import { api } from './services/api';
+import { api, apiMembership } from './services/api';
 
 import { LoginScreen } from './components/LoginScreen';
 import { ForgotPasswordScreen } from './components/ForgotPasswordScreen';
@@ -53,6 +53,7 @@ export default function App() {
   const [history, setHistory] = useState<ScreenId[]>(['login']);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
+  const landingChecked = useRef(false);
   const [userRole, setUserRole] = useState<'owner' | 'barber'>(() => {
     try {
       const saved = localStorage.getItem('barberos_user_role');
@@ -62,6 +63,25 @@ export default function App() {
     }
     return 'owner';
   });
+
+  // El dueño aterriza en el plan si debe activar la prueba (aún no iniciada) o si
+  // la cuenta está bloqueada (prueba vencida sin pago). Una vez revisado, el 402
+  // server-side (evento barberos:membership-blocked) cubre los cortes en vivo.
+  const goToOwnerLanding = (fallback: ScreenId) => {
+    const settle = (screen: ScreenId) => {
+      setTransition('none');
+      setCurrentScreen(screen);
+      setHistory((prev) => (prev[prev.length - 1] === screen ? prev : [...prev, screen]));
+      window.scrollTo(0, 0);
+    };
+    apiMembership
+      .get()
+      .then((m) => {
+        const mustAct = m.status === 'blocked' || (m.status === 'trial' && !m.trialStartedAt);
+        settle(mustAct ? 'wompi_plan' : fallback);
+      })
+      .catch(() => settle(fallback));
+  };
 
   useEffect(() => {
     const user = api.user();
@@ -73,8 +93,14 @@ export default function App() {
     } catch {
       // Ignore
     }
-    setHistory(['login', user.role === 'owner' ? 'owner_dashboard' : 'barber_terminal']);
-    setCurrentScreen(user.role === 'owner' ? 'owner_dashboard' : 'barber_terminal');
+    if (user.role === 'owner' && !landingChecked.current) {
+      landingChecked.current = true;
+      setHistory(['login', 'owner_dashboard']);
+      goToOwnerLanding('owner_dashboard');
+    } else if (user.role === 'barber') {
+      setHistory(['login', 'barber_terminal']);
+      setCurrentScreen('barber_terminal');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -100,6 +126,21 @@ export default function App() {
     if (userRole === 'barber' && ADMIN_ONLY_SCREENS.includes(screen)) {
       setCurrentScreen('barber_terminal');
       setTransition('none');
+      return;
+    }
+
+    // Primer aterrizaje del dueño en el dashboard: la membresía decide el destino
+    // (plan a activar pagar, o dashboard normal). Solo se evalúa una vez por sesión.
+    if (screen === 'owner_dashboard' && userRole === 'owner' && !landingChecked.current) {
+      landingChecked.current = true;
+      setIsLoggedIn(true);
+      if (trackHistory) {
+        setHistory((prev) => (prev[prev.length - 1] === screen ? prev : [...prev, screen]));
+      }
+      setTransition(trans);
+      setCurrentScreen(screen);
+      window.scrollTo(0, 0);
+      goToOwnerLanding('owner_dashboard');
       return;
     }
 

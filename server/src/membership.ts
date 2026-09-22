@@ -52,7 +52,7 @@ type ShopRow = MembershipRow & {
   name: string;
   phone: string | null;
   owner_email: string | null;
-};;
+};
 
 /** Lee las columnas de membresía de una barbería. */
 export async function getMembershipRow(shopId: string): Promise<MembershipRow | null> {
@@ -143,42 +143,54 @@ export async function activateMembership(shopId: string, paidAt: Date = new Date
 const wompiApiBase = () =>
   config.wompi.env === 'production' ? 'https://production.wompi.co' : 'https://sandbox.wompi.co';
 
-/** Prepara el cobro: devuelve referencia y, si Wompi está configurado, los datos del widget. */
+/** Prepara el cobro: devuelve referencia y, si Wompi está configurado, los datos del widget.
+ *  Nunca lanza: cualquier problema con Wompi se reporta en `error` y el widget decide. */
 export async function createWompiCheckout(shopId: string, email: string) {
   const reference = `ref-${shopId}`; // 4 + 36 = 40 chars, máximo permitido por Wompi
-  const publicKey = config.wompi.publicKey;
-  if (!publicKey) {
-    return { reference, amount: MEMBERSHIP_PRICE, currency: 'COP', wompi: null };
-  }
-
-  let acceptanceToken: string | null = null;
-  try {
-    const res = await fetch(`${wompiApiBase()}/v1/merchants/${publicKey}`);
-    if (res.ok) {
-      const data = (await res.json()) as {
-        data?: { presigned_acceptance?: { acceptance_token?: string } };
-      };
-      acceptanceToken = data.data?.presigned_acceptance?.acceptance_token ?? null;
-    }
-  } catch {
-    // Sin red al proveedor; el widget mostrará el error de configuración
-  }
-
-  return {
+  const fallback = (acceptanceToken: string | null, error: string | null = null) => ({
     reference,
     amount: MEMBERSHIP_PRICE,
     currency: 'COP',
     email,
+    error,
     wompi: {
       env: config.wompi.env,
-      publicKey,
+      publicKey: config.wompi.publicKey ?? '',
       currency: 'COP',
       amountInCents: MEMBERSHIP_PRICE * 100,
       reference,
       acceptanceToken,
       redirectUrl: `${config.appBaseUrl}/#/wompi_plan?pago=ok`,
     },
-  };
+  });
+
+  const publicKey = config.wompi.publicKey;
+  if (!publicKey) {
+    return { reference, amount: MEMBERSHIP_PRICE, currency: 'COP', error: 'no_wompi_keys', wompi: null };
+  }
+
+  const fetchImpl = globalThis.fetch;
+  if (typeof fetchImpl !== 'function') {
+    console.error('[membership] checkout: la runtime del servidor no expone fetch (Node >= 18 requerido)');
+    return fallback(null, 'runtime_sin_fetch');
+  }
+
+  let acceptanceToken: string | null = null;
+  try {
+    const res = await fetchImpl(`${wompiApiBase()}/v1/merchants/${publicKey}`);
+    if (res.ok) {
+      const data = (await res.json()) as {
+        data?: { presigned_acceptance?: { acceptance_token?: string } };
+      };
+      acceptanceToken = data.data?.presigned_acceptance?.acceptance_token ?? null;
+    } else {
+      console.warn(`[membership] checkout: Wompi respondió ${res.status}`);
+    }
+  } catch (err) {
+    console.error('[membership] checkout: error consultando token de aceptación de Wompi:', err);
+  }
+
+  return fallback(acceptanceToken);
 }
 
 /**
