@@ -43,15 +43,29 @@ app.use(
       directives: {
         'default-src': ["'self'"],
         // El index.html usa Google Fonts (Barlow Condensed / Plus Jakarta) y Material Symbols.
-        'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        'style-src': [
+          "'self'",
+          "'unsafe-inline'",
+          'https://fonts.googleapis.com',
+          'https://checkout.wompi.co',
+        ],
         'font-src': ["'self'", 'https://fonts.gstatic.com', 'data:'],
-        'img-src': ["'self'", 'data:', 'blob:'],
-        'connect-src': ["'self'"],
-        'script-src': ["'self'"],
+        'img-src': [
+          "'self'",
+          'data:',
+          'blob:',
+          'https://checkout.wompi.co',
+          'https://*.wompi.co',
+        ],
+        // El widget de pago de Wompi (Nequi, PSE, tarjetas) carga scripts y habla
+        // con las APIs de pago desde checkout.wompi.co y *.wompi.co.
+        'connect-src': ["'self'", 'https://checkout.wompi.co', 'https://*.wompi.co'],
+        'script-src': ["'self'", 'https://checkout.wompi.co', 'https://*.wompi.co'],
+        'frame-src': ["'self'", 'https://checkout.wompi.co', 'https://*.wompi.co'],
         'object-src': ["'none'"],
         'base-uri': ["'self'"],
         'frame-ancestors': ["'none'"],
-        'form-action': ["'self'"],
+        'form-action': ["'self'", 'https://checkout.wompi.co', 'https://*.wompi.co'],
         ...(config.isProduction ? { 'upgrade-insecure-requests': [] } : {}),
       },
     },
