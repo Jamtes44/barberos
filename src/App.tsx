@@ -84,23 +84,34 @@ export default function App() {
   };
 
   useEffect(() => {
-    const user = api.user();
-    if (!user || !api.token()) return;
-    setIsLoggedIn(true);
-    setUserRole(user.role);
-    try {
-      localStorage.setItem('barberos_user_role', user.role);
-    } catch {
-      // Ignore
-    }
-    if (user.role === 'owner' && !landingChecked.current) {
-      landingChecked.current = true;
-      setHistory(['login', 'owner_dashboard']);
-      goToOwnerLanding('owner_dashboard');
-    } else if (user.role === 'barber') {
-      setHistory(['login', 'barber_terminal']);
-      setCurrentScreen('barber_terminal');
-    }
+    const savedUser = api.user();
+    if (!savedUser) return;
+    (async () => {
+      let freshUser = savedUser;
+      try {
+        // Valida que la cookie httpOnly siga viva y refresca la data de sesión.
+        const me = await api.me();
+        freshUser = me.user;
+      } catch {
+        api.clear();
+        return;
+      }
+      setIsLoggedIn(true);
+      setUserRole(freshUser.role);
+      try {
+        localStorage.setItem('barberos_user_role', freshUser.role);
+      } catch {
+        // Ignore
+      }
+      if (freshUser.role === 'owner' && !landingChecked.current) {
+        landingChecked.current = true;
+        setHistory(['login', 'owner_dashboard']);
+        goToOwnerLanding('owner_dashboard');
+      } else if (freshUser.role === 'barber') {
+        setHistory(['login', 'barber_terminal']);
+        setCurrentScreen('barber_terminal');
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

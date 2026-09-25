@@ -66,9 +66,17 @@ export function sessionCookieOptions(): Record<string, unknown> {
   };
 }
 
-/** Establece la cookie de sesión (httpOnly, SameSite=Strict, Secure en prod). */
-export function setSessionCookie(res: Response, token: string): void {
-  res.cookie(config.sessionCookieName, token, sessionCookieOptions());
+/**
+ * Establece la cookie de sesión (httpOnly, SameSite=Strict, Secure en prod).
+ * Con `remember` la cookie persiste (jwtExpiresIn); sin él es de sesión
+ * (se borra al cerrar el navegador) para el flujo "no recordarme".
+ */
+export function setSessionCookie(res: Response, token: string, remember = true): void {
+  const base = sessionCookieOptions();
+  res.cookie(config.sessionCookieName, token, {
+    ...base,
+    ...(remember ? {} : { maxAge: undefined }),
+  });
 }
 
 /** Elimina la cookie de sesión (logout). */

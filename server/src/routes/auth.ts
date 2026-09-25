@@ -104,7 +104,8 @@ router.post(
     if (!ok) throw new AppError(401, 'Correo o contraseña incorrectos');
 
     const token = signToken(user.id as string, Number(user.token_version ?? 0));
-    setSessionCookie(res, token);
+    // "Recordarme en este teléfono": la cookie persiste solo si el cliente lo pide.
+    setSessionCookie(res, token, (req.body ?? {}).remember !== false);
     res.json({
       token,
       user: {

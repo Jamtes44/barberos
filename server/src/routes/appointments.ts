@@ -2,13 +2,67 @@ import { Router } from 'express';
 import { query, queryOne } from '../db.js';
 import { AppError, asyncHandler, requireFields } from '../util.js';
 import { requireAuth } from '../middleware/auth.js';
-import { requireMemberActive } from '../membership.js';
+import { requireMemberActive, sendWhatsApp } from '../membership.js';
 
 const router = Router();
 router.use(requireAuth);
 router.use(requireMemberActive);
 
 const STATUSES = ['pendiente', 'confirmada', 'en_corte', 'finalizado', 'cancelado', 'no_show'];
+
+/** Formatea fecha/hora en hora de Colombia (América/Bogotá). */
+function formatAppointmentDate(startAt: string | Date): string {
+  const dt = new Date(startAt);
+  const fecha = new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(dt);
+  const hora = new Intl.DateTimeFormat('es-CO', {
+    timeZone: 'America/Bogota',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(dt);
+  return `${fecha} · ${hora}`;
+}
+
+/** Confirma por WhatsApp una cita agendada (NO walk-in). Se envía sin bloquear la respuesta. */
+function notifyScheduledAppointment(
+  payload: Record<string, unknown>,
+  phone: string | null,
+  shopId: string,
+): void {
+  if (!phone) return;
+  void (async () => {
+    try {
+      const shop = await queryOne<{ name: string | null }>(
+        `SELECT name FROM shops WHERE id = $1`,
+        [shopId],
+      );
+      const shopName = shop?.name ?? 'la barbería';
+      const lines = [
+        `¡Hola ${payload.client_name}! 👋`,
+        '',
+        `Te confirmamos tu cita en *${shopName}*:`,
+        '',
+        `📅 ${formatAppointmentDate(String(payload.start_at))}`,
+        payload.service_name ? `💈 ${payload.service_name}` : '',
+        '',
+        'Te esperamos 🪒 BarberOS',
+      ];
+      const ok = await sendWhatsApp(phone, lines.filter(Boolean).join('\n'));
+      console.log(
+        ok
+          ? `[whatsapp] cita confirmada enviada a ${phone}`
+          : `[whatsapp] envío pendiente/fuera de ventana 24h a ${phone}`,
+      );
+    } catch (err) {
+      console.error('[whatsapp] error enviando confirmación de cita:', err);
+    }
+  })();
+}
 
 function parseDate(d: unknown): string | null {
   if (!d) return null;
@@ -104,6 +158,10 @@ router.post(
         b.notes ? String(b.notes) : null,
       ],
     );
+    // Cita agendada (no walk-in/express): avisa al cliente por WhatsApp.
+    if (apt && !Boolean(apt.is_walkin) && apt.phone) {
+      notifyScheduledAppointment(apt, String(apt.phone), req.user!.shopId!);
+    }
     res.status(201).json(apt);
   }),
 );

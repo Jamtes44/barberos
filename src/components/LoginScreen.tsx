@@ -14,6 +14,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [remember, setRemember] = useState(true);
 
   const handleRoleChange = (newRole: 'owner' | 'barber') => {
     setRole(newRole);
@@ -31,7 +32,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
     setError(null);
     setIsSubmitting(true);
     try {
-      const { user } = await api.login(username.trim(), password);
+      const { user } = await api.login(username.trim(), password, remember);
 
       // Validación por puesto seleccionado:
       // - Sección Dueño/Admin: solo cuentas de dueño.
@@ -270,7 +271,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onNavigate, onRoleSele
                     <input
                       type="checkbox"
                       id="remember-me-checkbox"
-                      defaultChecked
+                      checked={remember}
+                      onChange={(e) => setRemember(e.target.checked)}
                       className="w-4 h-4 rounded text-amber-500 border-slate-300 focus:ring-amber-400"
                     />
                     <span className="font-body-sm text-[13px] text-slate-700 font-medium">Recordarme en este teléfono</span>

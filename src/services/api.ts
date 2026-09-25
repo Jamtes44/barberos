@@ -93,6 +93,11 @@ export class ApiError extends Error {
 
 // ---------- Sesión ----------
 
+// Guardia en memoria: cubre la sesión activa cuando el usuario marca "no
+// recordarme en este teléfono" (no se persiste nada en localStorage).
+let memoryUser: AuthUser | null = null;
+let memoryShop: Shop | null = null;
+
 export function getToken(): string | null {
   try {
     return localStorage.getItem(TOKEN_KEY);
@@ -104,10 +109,11 @@ export function getToken(): string | null {
 export function getSessionUser(): AuthUser | null {
   try {
     const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as AuthUser) : null;
+    if (raw) return JSON.parse(raw) as AuthUser;
   } catch {
-    return null;
+    // Ignore
   }
+  return memoryUser;
 }
 
 function sessionShopKey(): string {
@@ -123,16 +129,20 @@ function sessionShopKey(): string {
 export function getSessionShop(): Shop | null {
   try {
     const raw = localStorage.getItem(sessionShopKey());
-    return raw ? (JSON.parse(raw) as Shop) : null;
+    if (raw) return JSON.parse(raw) as Shop;
   } catch {
-    return null;
+    // Ignore
   }
+  return memoryShop;
 }
 
-export function saveSession(_token: string, user: AuthUser, shop?: Shop): void {
+export function saveSession(_token: string, user: AuthUser, shop?: Shop, persist = true): void {
+  // El token viaja en una cookie httpOnly (inaccesible desde JS) para evitar
+  // robo por XSS. Aquí solo se guardan datos no sensibles de la sesión.
+  memoryUser = user;
+  if (shop) memoryShop = shop;
+  if (!persist) return;
   try {
-    // El token viaja en una cookie httpOnly (inaccesible desde JS) para evitar
-    // robo por XSS. Aquí solo se guardan datos no sensibles de la sesión.
     localStorage.setItem(USER_KEY, JSON.stringify(user));
     if (shop) localStorage.setItem(sessionShopKey(), JSON.stringify(shop));
   } catch {
@@ -141,6 +151,8 @@ export function saveSession(_token: string, user: AuthUser, shop?: Shop): void {
 }
 
 export function clearSession(): void {
+  memoryUser = null;
+  memoryShop = null;
   try {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -209,9 +221,12 @@ const json = (method: string, data?: unknown): RequestInit => ({
 
 // ---------- Auth ----------
 
-export async function apiLogin(email: string, password: string) {
-  const res = await request<{ token: string; user: AuthUser }>('/auth/login', json('POST', { email, password }));
-  saveSession(res.token, res.user);
+export async function apiLogin(email: string, password: string, remember = true) {
+  const res = await request<{ token: string; user: AuthUser }>(
+    '/auth/login',
+    json('POST', { email, password, remember }),
+  );
+  saveSession(res.token, res.user, undefined, remember);
   return res;
 }
 
