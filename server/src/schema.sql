@@ -194,3 +194,16 @@ CREATE INDEX IF NOT EXISTS idx_sale_items_sale    ON sale_items(sale_id);
 --  referenciaba 'NEW.user_id' que no existe en la tabla. SOLO limpia el viejo.)
 DROP TRIGGER IF EXISTS sync_barber_user ON users;
 DROP FUNCTION IF EXISTS sync_barber_user();
+
+-- ============ Row Level Security ============
+-- La API de BarberOS accede por SQL directo con el rol dueño (que ignora RLS).
+-- Habilitar RLS SIN políticas en todas las tablas públicas bloquea la API REST
+-- de Supabase (anon/authenticated) sin romper la app. Idempotente en cada arranque.
+DO $$
+DECLARE t record;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public'
+  LOOP
+    EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t.tablename);
+  END LOOP;
+END $$;
